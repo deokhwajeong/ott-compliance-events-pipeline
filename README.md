@@ -42,6 +42,8 @@ Smart TV Client (simulated)
  [Analytics & Compliance APIs]
    - /stats/...
    - /compliance/...
+
+
 Core components:
 
 Ingest API (FastAPI): Receives JSON events from Smart TV clients.
@@ -75,6 +77,8 @@ json
     "network_type": "wifi"
   }
 }
+
+
 Key fields used for compliance/risk:
 
 is_eu, has_consent: Used to simulate GDPR-related risks.
