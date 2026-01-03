@@ -1,6 +1,4 @@
 # ott-compliance-events-pipeline
-Smart TV/OTT event ingestion and analytics pipeline with a simple compliance risk engine for privacy and abnormal behavior detection.
-# OTT Compliance Events Pipeline
 
 Smart TV/OTT event ingestion and analytics pipeline with a simple compliance risk engine for privacy and abnormal behavior detection.
 
@@ -23,43 +21,48 @@ This project implements a small-scale backend that:
 
 ## 2. High-level Architecture
 
-```text
 Smart TV Client (simulated)
-        |
-        v
-   [Ingest API]  --- simple auth / validation
-        |
-        v
-     [Queue]  --- in-memory or Redis-backed
-        |
-        v
- [Consumer Service]
-   - store raw events
-   - update aggregates (per content / region / device)
-   - run compliance rules -> risk scores
-        |
-        v
- [Analytics & Compliance APIs]
-   - /stats/...
-   - /compliance/...
+|
+v
+[Ingest API] --- simple auth / validation
+|
+v
+[Queue] --- in-memory or Redis-backed
+|
+v
+[Consumer Service]
 
+store raw events
+
+update aggregates (per content / region / device)
+
+run compliance rules -> risk scores
+|
+v
+[Analytics & Compliance APIs]
+
+/stats/...
+
+/compliance/...
+
+yaml
+코드 복사
 
 Core components:
 
-Ingest API (FastAPI): Receives JSON events from Smart TV clients.
+- **Ingest API (FastAPI)**: Receives JSON events from Smart TV clients.  
+- **Queue**: Simple abstraction (in-memory to start; could be swapped for Redis/Kafka).  
+- **Consumer**: Dequeues events, writes raw logs, updates aggregates, computes compliance risk scores.  
+- **Analytics API**: Read-only endpoints for health metrics (e.g., error rates per title/region).  
+- **Compliance API**: Read-only endpoints for risk insights (e.g., potential GDPR/CCPA issues).  
 
-Queue: Simple abstraction (in-memory to start; could be swapped for Redis/Kafka).
+---
 
-Consumer: Dequeues events, writes raw logs, updates aggregates, computes compliance risk scores.
+## 3. Event Model
 
-Analytics API: Read-only endpoints for health metrics (e.g., error rates per title/region).
-
-Compliance API: Read-only endpoints for risk insights (e.g., potential GDPR/CCPA issues).
-
-3. Event Model
 Example JSON payload (Smart TV → Ingest API):
 
-json
+```json
 {
   "event_id": "evt_123",
   "user_id": "user_42",
@@ -77,8 +80,6 @@ json
     "network_type": "wifi"
   }
 }
-
-
 Key fields used for compliance/risk:
 
 is_eu, has_consent: Used to simulate GDPR-related risks.
@@ -98,25 +99,25 @@ GDPR-like privacy risk
 
 EU user (is_eu = true) sends events with has_consent = false
 
-→ raise privacy_risk = HIGH.
+→ raise privacy_risk = HIGH
 
 CCPA-like retention risk
 
 User is marked as do_not_track or requested deletion (simulated flag), but continues sending events
 
-→ retention_risk = HIGH.
+→ retention_risk = HIGH
 
 Account sharing / abnormal access
 
 Same user_id active from more than N distinct regions or IPs within a short time window
 
-→ account_risk = MEDIUM/HIGH.
+→ account_risk = MEDIUM/HIGH
 
 Content or app security/quality
 
 Specific content_id or device_id exhibits error rate above a threshold
 
-→ content_risk = HIGH.
+→ content_risk = HIGH
 
 Risk scores are stored alongside aggregates and surfaced via the compliance APIs.
 
@@ -134,28 +135,22 @@ Return 202 Accepted if queued successfully
 
 5.2 Analytics APIs (read)
 GET /stats/summary
-
 Returns overall counts, play time, error rates (global).
 
 GET /stats/content/{content_id}
-
 Returns metrics for a specific title: plays, watch time, error rate, top regions.
 
 GET /stats/region/{region}
-
 Returns metrics for a given region: plays, error distribution, device mix.
 
 5.3 Compliance APIs (read)
 GET /compliance/summary
-
 Overall counts of events flagged by each rule (privacy, account, content).
 
 GET /compliance/events
-
 List of high-risk events with pagination.
 
 GET /compliance/regions
-
 Aggregated risk by region (e.g., EU vs non-EU, CA vs non-CA).
 
 6. Tech Stack
@@ -171,6 +166,7 @@ Testing: pytest
 
 7. Getting Started
 bash
+코드 복사
 # 1. Clone
 git clone https://github.com/deokhwajeong/ott-compliance-events-pipeline.git
 cd ott-compliance-events-pipeline
@@ -202,9 +198,11 @@ Titles or devices with high error rates (to trigger content risk)
 Example usage:
 
 bash
+코드 복사
 python src/scripts/generate_fake_events.py --events 1000 --concurrency 10
 9. Repository Structure
 text
+코드 복사
 .
 ├── README.md
 ├── requirements.txt
