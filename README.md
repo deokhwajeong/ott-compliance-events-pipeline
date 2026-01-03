@@ -53,7 +53,7 @@ Analytics API: Read-only endpoints for health metrics (e.g., error rates per tit
 
 Compliance API: Read-only endpoints for risk insights (e.g., potential GDPR/CCPA issues).
 
-3. Event Model
+## 3. Event Model
 
 Example JSON payload (Smart TV → Ingest API):
 
