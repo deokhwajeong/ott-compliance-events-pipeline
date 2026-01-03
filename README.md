@@ -11,58 +11,52 @@ Product and operations teams use this telemetry to monitor service health and us
 
 This project implements a small-scale backend that:
 
-- Collects Smart TV playback events via an ingest API  
-- Streams them through a lightweight queue into a consumer service  
-- Aggregates metrics for monitoring (content health, error rates, usage by region)  
-- Runs a simple compliance risk engine on top of the events  
-- Exposes APIs to query both health stats and compliance risk signals  
+- Collects Smart TV playback events via an ingest API
+- Streams them through a lightweight queue into a consumer service
+- Aggregates metrics for monitoring (content health, error rates, usage by region)
+- Runs a simple compliance risk engine on top of the events
+- Exposes APIs to query both health stats and compliance risk signals
 
 ---
 
 ## 2. High-level Architecture
 
+```text
 Smart TV Client (simulated)
-|
-v
-[Ingest API] --- simple auth / validation
-|
-v
-[Queue] --- in-memory or Redis-backed
-|
-v
-[Consumer Service]
-
-store raw events
-
-update aggregates (per content / region / device)
-
-run compliance rules -> risk scores
-|
-v
-[Analytics & Compliance APIs]
-
-/stats/...
-
-/compliance/...
-
-yaml
-코드 복사
+        |
+        v
+   [Ingest API]  --- simple auth / validation
+        |
+        v
+     [Queue]  --- in-memory or Redis-backed
+        |
+        v
+ [Consumer Service]
+   - store raw events
+   - update aggregates (per content / region / device)
+   - run compliance rules -> risk scores
+        |
+        v
+ [Analytics & Compliance APIs]
+   - /stats/...
+   - /compliance/...
 
 Core components:
 
-- **Ingest API (FastAPI)**: Receives JSON events from Smart TV clients.  
-- **Queue**: Simple abstraction (in-memory to start; could be swapped for Redis/Kafka).  
-- **Consumer**: Dequeues events, writes raw logs, updates aggregates, computes compliance risk scores.  
-- **Analytics API**: Read-only endpoints for health metrics (e.g., error rates per title/region).  
-- **Compliance API**: Read-only endpoints for risk insights (e.g., potential GDPR/CCPA issues).  
+Ingest API (FastAPI): Receives JSON events from Smart TV clients.
 
----
+Queue: Simple abstraction (in-memory to start; could be swapped for Redis/Kafka).
 
-## 3. Event Model
+Consumer: Dequeues events, writes raw logs, updates aggregates, computes compliance risk scores.
+
+Analytics API: Read-only endpoints for health metrics (e.g., error rates per title/region).
+
+Compliance API: Read-only endpoints for risk insights (e.g., potential GDPR/CCPA issues).
+
+3. Event Model
 
 Example JSON payload (Smart TV → Ingest API):
 
-```json
 {
   "event_id": "evt_123",
   "user_id": "user_42",
@@ -80,6 +74,7 @@ Example JSON payload (Smart TV → Ingest API):
     "network_type": "wifi"
   }
 }
+
 Key fields used for compliance/risk:
 
 is_eu, has_consent: Used to simulate GDPR-related risks.
@@ -91,38 +86,32 @@ user_id, device_id, ip_address: Used to detect abnormal access patterns.
 error_code: Used to detect potential content/security issues.
 
 4. Compliance Risk Engine (Rule-based)
+
 The first version uses a simple rule-based engine implemented in compliance_rules.py.
 
 Example rules:
 
 GDPR-like privacy risk
-
 EU user (is_eu = true) sends events with has_consent = false
-
-→ raise privacy_risk = HIGH
+→ raise privacy_risk = HIGH.
 
 CCPA-like retention risk
-
 User is marked as do_not_track or requested deletion (simulated flag), but continues sending events
-
-→ retention_risk = HIGH
+→ retention_risk = HIGH.
 
 Account sharing / abnormal access
-
 Same user_id active from more than N distinct regions or IPs within a short time window
-
-→ account_risk = MEDIUM/HIGH
+→ account_risk = MEDIUM/HIGH.
 
 Content or app security/quality
-
 Specific content_id or device_id exhibits error rate above a threshold
-
-→ content_risk = HIGH
+→ content_risk = HIGH.
 
 Risk scores are stored alongside aggregates and surfaced via the compliance APIs.
 
 5. APIs
 5.1 Ingest API (write)
+
 POST /events
 
 Request body: playback event JSON (see model above)
@@ -134,6 +123,7 @@ Validate & enqueue event
 Return 202 Accepted if queued successfully
 
 5.2 Analytics APIs (read)
+
 GET /stats/summary
 Returns overall counts, play time, error rates (global).
 
@@ -144,6 +134,7 @@ GET /stats/region/{region}
 Returns metrics for a given region: plays, error distribution, device mix.
 
 5.3 Compliance APIs (read)
+
 GET /compliance/summary
 Overall counts of events flagged by each rule (privacy, account, content).
 
@@ -154,6 +145,7 @@ GET /compliance/regions
 Aggregated risk by region (e.g., EU vs non-EU, CA vs non-CA).
 
 6. Tech Stack
+
 Language: Python 3.x
 
 Web framework: FastAPI
@@ -165,8 +157,6 @@ Queue: In-memory queue to start (could be replaced by Redis/Kafka)
 Testing: pytest
 
 7. Getting Started
-bash
-코드 복사
 # 1. Clone
 git clone https://github.com/deokhwajeong/ott-compliance-events-pipeline.git
 cd ott-compliance-events-pipeline
@@ -180,9 +170,11 @@ pip install -r requirements.txt
 
 # 4. Run the API (dev mode)
 uvicorn src.app.main:app --reload
-The API will be available at http://localhost:8000.
+The API will be available at http://localhost:8000
+.
 
 8. Generating Fake Smart TV Events
+
 A simple script at src/scripts/generate_fake_events.py can simulate Smart TV clients by POSTing random events to /events.
 
 The script generates:
@@ -197,12 +189,10 @@ Titles or devices with high error rates (to trigger content risk)
 
 Example usage:
 
-bash
-코드 복사
 python src/scripts/generate_fake_events.py --events 1000 --concurrency 10
+
 9. Repository Structure
-text
-코드 복사
+
 .
 ├── README.md
 ├── requirements.txt
@@ -221,7 +211,10 @@ text
 └── tests/
     ├── __init__.py
     └── test_api_basic.py
+
+
 10. Future Work
+
 Replace in-memory queue with Kafka or Redis Streams
 
 Add richer risk models (e.g., anomaly detection over time windows)
@@ -235,6 +228,7 @@ Add a small recommendation service using viewing logs (collaborative filtering o
 Add authentication/authorization for admin endpoints
 
 11. Why this project?
+
 This project is inspired by real-world OTT and Smart TV platforms that must:
 
 Operate at scale across regions and devices
@@ -254,3 +248,9 @@ Experience with distributed system patterns on a smaller scale
 Awareness of data privacy and compliance risks in streaming platforms
 
 Ability to turn Smart TV/OTT domain experience into concrete system design and code
+
+
+
+
+
+
