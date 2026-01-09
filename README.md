@@ -1,57 +1,177 @@
-```text
-ott-compliance-events-pipeline
-Smart TV/OTT event ingestion and analytics pipeline with a simple compliance risk engine for privacy and abnormal behavior detection.
+# OTT Compliance Events Pipeline
 
-OTT Compliance Events Pipeline
-Smart TV/OTT event ingestion and analytics pipeline with a simple compliance risk engine for privacy and abnormal behavior detection.
+[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-1. Problem
-Global OTT and Smart TV platforms receive millions of client-side events every day: play, pause, seek, errors, device info, region, and more.
-Product and operations teams use this telemetry to monitor service health and user experience, while legal/privacy teams need visibility into potential compliance risks (e.g., GDPR/CCPA violations, suspicious access patterns).
+Smart TV/OTT 플랫폼을 위한 이벤트 수집 및 분석 파이프라인으로, 개인정보 보호 및 이상 행동 감지를 위한 컴플라이언스 위험 엔진을 포함합니다.
 
-This project implements a small-scale backend that:
+## 📋 목차
 
-Collects Smart TV playback events via an ingest API
-Streams them through a lightweight queue into a consumer service
-Aggregates metrics for monitoring (content health, error rates, usage by region)
-Runs a simple compliance risk engine on top of the events
-Exposes APIs to query both health stats and compliance risk signals
+- [✨ 주요 기능](#-주요-기능)
+- [🏗️ 아키텍처](#️-아키텍처)
+- [🚀 빠른 시작](#-빠른-시작)
+- [📊 대시보드](#-대시보드)
+- [🔐 인증](#-인증)
+- [📚 API 문서](#-api-문서)
+- [🛠️ 기술 스택](#️-기술-스택)
+- [📁 프로젝트 구조](#-프로젝트-구조)
+- [🧪 테스트](#-테스트)
+- [🤝 기여](#-기여)
+- [📄 라이선스](#-라이선스)
 
-2. High-level Architecture
-Smart TV Client (simulated)
-        |
-        v
-   [Ingest API]  --- simple auth / validation
-        |
-        v
-     [Queue]  --- in-memory or Redis-backed
-        |
-        v
- [Consumer Service]
-   - store raw events
-   - update aggregates (per content / region / device)
-   - run compliance rules -> risk scores
-        |
-        v
- [Analytics & Compliance APIs]
-   - /stats/...
-   - /compliance/...
+## ✨ 주요 기능
 
-Core components:
+### 🎯 실시간 이벤트 처리
+- Smart TV/OTT 플랫폼에서 발생하는 이벤트 수집 (재생, 일시정지, 탐색, 오류 등)
+- 비동기 큐 기반 처리로 고성능 이벤트 스트리밍
+- SQLite 데이터베이스를 통한 영속성 보장
 
-Ingest API (FastAPI): Receives JSON events from Smart TV clients.
+### 🔍 고급 컴플라이언스 위험 감지
+- **GDPR/CCPA 준수**: EU 사용자 동의 상태 및 캘리포니아 지역 처리
+- **시간 창 기반 분석**: 1시간 내 다중 지역 접근 및 고빈도 활동 감지
+- **ML 기반 이상 탐지**: scikit-learn을 활용한 통계적 이상 탐지
+- **구독 플랜 영향**: 프리미엄/베이직 사용자별 위험 조정
 
-Queue: Simple abstraction (in-memory to start; could be swapped for Redis/Kafka).
+### 📈 실시간 모니터링
+- Chart.js 기반 인터랙티브 대시보드
+- 위험 수준별 분포 차트 (낮음/중간/높음)
+- 실시간 메트릭 업데이트 (5초 간격)
 
-Consumer: Dequeues events, writes raw logs, updates aggregates, computes compliance risk scores.
+### 🔐 보안 인증
+- JWT 기반 인증 시스템
+- 역할 기반 접근 제어 (관리자/분석가)
+- 안전한 비밀번호 해싱 (PBKDF2)
 
-Analytics API: Read-only endpoints for health metrics (e.g., error rates per title/region).
+## 🏗️ 아키텍처
 
-Compliance API: Read-only endpoints for risk insights (e.g., potential GDPR/CCPA issues).
+```
+Smart TV Client ──► [Ingest API] ──► [Queue] ──► [Consumer Service]
+                        │               │               │
+                        ▼               ▼               ▼
+                   [Validation]    [In-Memory]    [Risk Analysis]
+                        │               │               │
+                        ▼               ▼               ▼
+                   [JWT Auth]     [Redis/Kafka     [Compliance Rules]
+                                   (Future)]        │
+                                                   ▼
+                                             [Database]
+                                             │
+                                             ▼
+                                       [Analytics APIs]
+                                             │
+                                             ▼
+                                       [Web Dashboard]
+```
 
-3. Event Model
-Example JSON payload (Smart TV → Ingest API):
+### 핵심 컴포넌트
 
+- **Ingest API**: FastAPI 기반 이벤트 수집 엔드포인트
+- **Queue**: 인메모리 큐 (Redis/Kafka로 확장 가능)
+- **Consumer**: 이벤트 처리 및 위험 분석
+- **Database**: SQLite 기반 데이터 영속성
+- **Dashboard**: 실시간 웹 인터페이스
+
+## 🚀 빠른 시작
+
+### 필수 요구사항
+
+- Python 3.12+
+- pip
+
+### 설치
+
+```bash
+# 1. 저장소 클론
+git clone https://github.com/deokhwajeong/ott-compliance-events-pipeline.git
+cd ott-compliance-events-pipeline
+
+# 2. 가상환경 생성 (선택사항)
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 3. 의존성 설치
+pip install -r requirements.txt
+
+# 4. 서버 실행
+uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### 테스트 데이터 생성
+
+```bash
+# 가짜 이벤트 생성 (1000개, 10개 동시 요청)
+python src/scripts/generate_fake_events.py --events 1000 --concurrency 10
+```
+
+## 📊 대시보드
+
+웹 브라우저에서 `http://localhost:8000`으로 접속하여 실시간 대시보드를 확인할 수 있습니다.
+
+### 기능
+- **실시간 메트릭**: 이벤트 처리 통계 및 위험 분포
+- **위험 차트**: 도넛 차트로 위험 수준 시각화
+- **최근 결과**: 최근 처리된 이벤트 목록
+- **관리자 기능**: 로그인 후 이벤트 처리 제어
+
+## 🔐 인증
+
+관리자 엔드포인트는 JWT 토큰 기반 인증이 필요합니다.
+
+### 테스트 계정
+
+| 사용자명 | 비밀번호 | 권한 |
+|---------|---------|------|
+| `admin` | `admin123` | 관리자 |
+| `analyst` | `analyst123` | 분석가 |
+
+### 로그인 방법
+
+```bash
+# 토큰 발급
+curl -X POST "http://localhost:8000/token" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=admin&password=admin123"
+
+# 응답 예시
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+### 보호된 엔드포인트 사용
+
+```bash
+# 인증 헤더와 함께 요청
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+  http://localhost:8000/compliance/summary
+```
+
+## 📚 API 문서
+
+### 공개 엔드포인트
+
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| `GET` | `/` | 웹 대시보드 |
+| `GET` | `/api` | 헬스체크 |
+| `POST` | `/events` | 이벤트 수집 |
+| `POST` | `/token` | JWT 토큰 발급 |
+
+### 보호된 엔드포인트 (인증 필요)
+
+| 메서드 | 엔드포인트 | 설명 |
+|--------|-----------|------|
+| `POST` | `/process/one` | 단일 이벤트 처리 |
+| `POST` | `/process/drain` | 모든 대기 이벤트 처리 |
+| `GET` | `/stats/summary` | 처리 통계 요약 |
+| `GET` | `/results/latest` | 최근 처리 결과 |
+| `GET` | `/compliance/summary` | 위험 수준 요약 |
+
+### 이벤트 모델
+
+```json
 {
   "event_id": "evt_123",
   "user_id": "user_42",
@@ -63,187 +183,91 @@ Example JSON payload (Smart TV → Ingest API):
   "is_eu": true,
   "has_consent": false,
   "ip_address": "203.0.113.10",
+  "subscription_plan": "premium",
   "error_code": null,
   "extra_metadata": {
     "app_version": "1.2.3",
     "network_type": "wifi"
   }
 }
+```
 
-Key fields used for compliance/risk:
+## 🛠️ 기술 스택
 
-is_eu, has_consent: Used to simulate GDPR-related risks.
+### 백엔드
+- **Python 3.12+**: 메인 프로그래밍 언어
+- **FastAPI**: 고성능 웹 프레임워크
+- **SQLAlchemy**: ORM 및 데이터베이스 관리
+- **Pydantic**: 데이터 검증 및 직렬화
 
-region: Used to simulate CCPA (e.g., "US-CA" for California).
+### 머신러닝 & 분석
+- **scikit-learn**: ML 기반 이상 감지
+- **NumPy**: 수치 계산
+- **Chart.js**: 데이터 시각화
 
-user_id, device_id, ip_address: Used to detect abnormal access patterns.
+### 보안
+- **PyJWT**: JWT 토큰 처리
+- **PassLib**: 비밀번호 해싱
+- **python-multipart**: 폼 데이터 처리
 
-error_code: Used to detect potential content/security issues.
+### 개발 도구
+- **pytest**: 단위 테스트
+- **Alembic**: 데이터베이스 마이그레이션
+- **Uvicorn**: ASGI 서버
 
-4. Compliance Risk Engine (Rule-based)
-The first version uses a simple rule-based engine implemented in compliance_rules.py.
+## 📁 프로젝트 구조
 
-Example rules:
-
-GDPR-like privacy risk
-
-EU user (is_eu = true) sends events with has_consent = false
-
-→ raise privacy_risk = HIGH.
-
-CCPA-like retention risk
-
-User is marked as do_not_track or requested deletion (simulated flag), but continues sending events
-
-→ retention_risk = HIGH.
-
-Account sharing / abnormal access
-
-Same user_id active from more than N distinct regions or IPs within a short time window
-
-→ account_risk = MEDIUM/HIGH.
-
-Content or app security/quality
-
-Specific content_id or device_id exhibits error rate above a threshold
-
-→ content_risk = HIGH.
-
-Risk scores are stored alongside aggregates and surfaced via the compliance APIs.
-
-5. APIs
-5.1 Ingest API (write)
-POST /events
-
-Request body: playback event JSON (see model above)
-
-Behavior:
-
-Validate & enqueue event
-Return 202 Accepted if queued successfully
-
-5.2 Analytics APIs (read)
-GET /stats/summary
-
-Returns overall counts, play time, error rates (global).
-
-GET /stats/content/{content_id}
-
-Returns metrics for a specific title: plays, watch time, error rate, top regions.
-
-GET /stats/region/{region}
-
-Returns metrics for a given region: plays, error distribution, device mix.
-
-5.3 Compliance APIs (read)
-GET /compliance/summary
-
-Overall counts of events flagged by each rule (privacy, account, content).
-
-GET /compliance/events
-
-List of high-risk events with pagination.
-
-GET /compliance/regions
-
-Aggregated risk by region (e.g., EU vs non-EU, CA vs non-CA).
-
-6. Tech Stack
-Language: Python 3.x
-
-Web framework: FastAPI
-
-Data store: SQLite or PostgreSQL (configurable)
-
-Queue: In-memory queue to start (could be replaced by Redis/Kafka)
-
-Testing: pytest
-
-7. Getting Started
-bash
-# 1. Clone
-git clone https://github.com/deokhwajeong/ott-compliance-events-pipeline.git
-cd ott-compliance-events-pipeline
-
-# 2. (Optional) Create virtualenv
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Run the API (dev mode)
-uvicorn src.app.main:app --reload
-The API will be available at http://localhost:8000.
-
-8. Generating Fake Smart TV Events
-A simple script at src/scripts/generate_fake_events.py can simulate Smart TV clients by POSTing random events to /events.
-
-The script generates:
-
-Normal viewing behavior (PLAY/STOP/SEEK)
-
-EU users with/without consent (to trigger privacy risk)
-
-Users with abnormal multi-region access (to trigger account risk)
-
-Titles or devices with high error rates (to trigger content risk)
-
-Example usage:
-bash
-python src/scripts/generate_fake_events.py --events 1000 --concurrency 10
-
-9. Repository Structure
-text
-.
-├── README.md
-├── requirements.txt
+```
+ott-compliance-events-pipeline/
 ├── src/
-│   ├── app/
-│   │   ├── __init__.py
-│   │   ├── main.py              # FastAPI entrypoint (Ingest + Analytics + Compliance APIs)
-│   │   ├── models.py            # ORM models (raw events, aggregates, risk tables)
-│   │   ├── schemas.py           # Pydantic request/response schemas
-│   │   ├── db.py                # DB connection (SQLite/Postgres)
-│   │   ├── queue.py             # Simple queue abstraction (in-memory / Redis)
-│   │   ├── consumer.py          # Event consumption, aggregation, risk scoring
-│   │   └── compliance_rules.py  # Rule-based compliance/risk engine
-│   └── scripts/
-│       └── generate_fake_events.py   # Smart TV event simulator
-└── tests/
-    ├── __init__.py
-    └── test_api_basic.py
+│   └── app/
+│       ├── __init__.py
+│       ├── main.py              # FastAPI 애플리케이션
+│       ├── auth.py              # JWT 인증 시스템
+│       ├── models.py            # SQLAlchemy 모델
+│       ├── schemas.py           # Pydantic 스키마
+│       ├── db.py                # 데이터베이스 연결
+│       ├── queue.py             # 큐 구현
+│       ├── consumer.py          # 이벤트 소비자
+│       ├── compliance_rules.py  # 위험 분석 규칙
+│       └── templates/
+│           └── dashboard.html   # 웹 대시보드
+├── scripts/
+│   └── generate_fake_events.py  # 테스트 데이터 생성기
+├── tests/
+│   └── test_app.py             # 단위 테스트
+├── requirements.txt            # Python 의존성
+├── README.md                   # 프로젝트 문서
+└── LICENSE                     # MIT 라이선스
+```
 
-10. Future Work
-Replace in-memory queue with Kafka or Redis Streams
+## 🧪 테스트
 
-Add richer risk models (e.g., anomaly detection over time windows)
+```bash
+# 모든 테스트 실행
+pytest tests/
 
-Integrate a simple dashboard (Grafana or custom frontend) on top of the APIs
+# 상세 출력
+pytest tests/ -v
 
-Extend the schema to cover subscription/plan info and link to revenue impact
+# 특정 테스트 실행
+pytest tests/test_app.py::test_event_schema -v
+```
 
-Add a small recommendation service using viewing logs (collaborative filtering or GNN-based models)
+## 🤝 기여
 
-Add authentication/authorization for admin endpoints
+기여를 환영합니다! 이슈를 보고하거나 풀 리퀘스트를 보내주세요.
 
-11. Why this project?
-This project is inspired by real-world OTT and Smart TV platforms that must:
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-Operate at scale across regions and devices
+## 📄 라이선스
 
-Monitor service health from client telemetry
+이 프로젝트는 MIT 라이선스 하에 있습니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 
-Respect evolving privacy regulations (GDPR/CCPA)
+---
 
-Detect abnormal behavior and mitigate risk early
-
-It is designed as a small, self-contained system to demonstrate:
-
-End-to-end backend design (ingest → queue → consumer → APIs)
-
-Experience with distributed system patterns on a smaller scale
-
-Awareness of data privacy and compliance risks in streaming platforms
-
-Ability to turn Smart TV/OTT domain experience into concrete system design and code
+**문의**: 문제가 있거나 질문이 있으시면 [이슈](https://github.com/deokhwajeong/ott-compliance-events-pipeline/issues)를 열어주세요.
