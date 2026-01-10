@@ -4,46 +4,46 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Smart TV/OTT 플랫폼을 위한 이벤트 수집 및 분석 파이프라인으로, 개인정보 보호 및 이상 행동 감지를 위한 컴플라이언스 위험 엔진을 포함합니다.
+An event collection and analysis pipeline for Smart TV/OTT platforms, including a compliance risk engine for privacy protection and anomaly detection.
 
-## 📋 목차
+## 📋 Table of Contents
 
-- [✨ 주요 기능](#-주요-기능)
-- [🏗️ 아키텍처](#️-아키텍처)
-- [🚀 빠른 시작](#-빠른-시작)
-- [📊 대시보드](#-대시보드)
-- [🔐 인증](#-인증)
-- [📚 API 문서](#-api-문서)
-- [🛠️ 기술 스택](#️-기술-스택)
-- [📁 프로젝트 구조](#-프로젝트-구조)
-- [🧪 테스트](#-테스트)
-- [🤝 기여](#-기여)
-- [📄 라이선스](#-라이선스)
+- [✨ Key Features](#-key-features)
+- [🏗️ Architecture](#️-architecture)
+- [🚀 Quick Start](#-quick-start)
+- [📊 Dashboard](#-dashboard)
+- [🔐 Authentication](#-authentication)
+- [📚 API Documentation](#-api-documentation)
+- [🛠️ Tech Stack](#️-tech-stack)
+- [📁 Project Structure](#-project-structure)
+- [🧪 Testing](#-testing)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
 
-## ✨ 주요 기능
+## ✨ Key Features
 
-### 🎯 실시간 이벤트 처리
-- Smart TV/OTT 플랫폼에서 발생하는 이벤트 수집 (재생, 일시정지, 탐색, 오류 등)
-- 비동기 큐 기반 처리로 고성능 이벤트 스트리밍
-- SQLite 데이터베이스를 통한 영속성 보장
+### 🎯 Real-time Event Processing
+- Collect events from Smart TV/OTT platforms (play, pause, seek, errors, etc.)
+- High-performance event streaming with async queue-based processing
+- Persistence guaranteed through SQLite database
 
-### 🔍 고급 컴플라이언스 위험 감지
-- **GDPR/CCPA 준수**: EU 사용자 동의 상태 및 캘리포니아 지역 처리
-- **시간 창 기반 분석**: 1시간 내 다중 지역 접근 및 고빈도 활동 감지
-- **ML 기반 이상 탐지**: scikit-learn을 활용한 통계적 이상 탐지
-- **구독 플랜 영향**: 프리미엄/베이직 사용자별 위험 조정
+### 🔍 Advanced Compliance Risk Detection
+- **GDPR/CCPA Compliance**: EU user consent status and California region processing
+- **Time-window Based Analysis**: Multi-region access and high-frequency activity detection within 1 hour
+- **ML-based Anomaly Detection**: Statistical anomaly detection using scikit-learn
+- **Subscription Plan Impact**: Risk adjustment based on premium/basic user plans
 
-### 📈 실시간 모니터링
-- Chart.js 기반 인터랙티브 대시보드
-- 위험 수준별 분포 차트 (낮음/중간/높음)
-- 실시간 메트릭 업데이트 (5초 간격)
+### 📈 Real-time Monitoring
+- Interactive dashboard based on Chart.js
+- Risk level distribution charts (low/medium/high)
+- Real-time metric updates (every 5 seconds)
 
-### 🔐 보안 인증
-- JWT 기반 인증 시스템
-- 역할 기반 접근 제어 (관리자/분석가)
-- 안전한 비밀번호 해싱 (PBKDF2)
+### 🔐 Secure Authentication
+- JWT-based authentication system
+- Role-based access control (admin/analyst)
+- Secure password hashing (PBKDF2)
 
-## 🏗️ 아키텍처
+## 🏗️ Architecture
 
 ```
 Smart TV Client ──► [Ingest API] ──► [Queue] ──► [Consumer Service]
@@ -64,112 +64,112 @@ Smart TV Client ──► [Ingest API] ──► [Queue] ──► [Consumer Ser
                                        [Web Dashboard]
 ```
 
-### 핵심 컴포넌트
+### Core Components
 
-- **Ingest API**: FastAPI 기반 이벤트 수집 엔드포인트
-- **Queue**: 인메모리 큐 (Redis/Kafka로 확장 가능)
-- **Consumer**: 이벤트 처리 및 위험 분석
-- **Database**: SQLite 기반 데이터 영속성
-- **Dashboard**: 실시간 웹 인터페이스
+- **Ingest API**: FastAPI-based event collection endpoint
+- **Queue**: In-memory queue (extensible to Redis/Kafka)
+- **Consumer**: Event processing and risk analysis
+- **Database**: SQLite-based data persistence
+- **Dashboard**: Real-time web interface
 
-## 🚀 빠른 시작
+## 🚀 Quick Start
 
-### 필수 요구사항
+### Prerequisites
 
 - Python 3.12+
 - pip
 
-### 설치
+### Installation
 
 ```bash
-# 1. 저장소 클론
+# 1. Clone the repository
 git clone https://github.com/deokhwajeong/ott-compliance-events-pipeline.git
 cd ott-compliance-events-pipeline
 
-# 2. 가상환경 생성 (선택사항)
+# 2. Create virtual environment (optional)
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# 3. 의존성 설치
+# 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. 서버 실행
+# 4. Run the server
 uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 테스트 데이터 생성
+### Generate Test Data
 
 ```bash
-# 가짜 이벤트 생성 (1000개, 10개 동시 요청)
+# Generate fake events (1000 events, 10 concurrent requests)
 python src/scripts/generate_fake_events.py --events 1000 --concurrency 10
 ```
 
-## 📊 대시보드
+## 📊 Dashboard
 
-웹 브라우저에서 `http://localhost:8000`으로 접속하여 실시간 대시보드를 확인할 수 있습니다.
+Access the real-time dashboard at `http://localhost:8000` in your web browser.
 
-### 기능
-- **실시간 메트릭**: 이벤트 처리 통계 및 위험 분포
-- **위험 차트**: 도넛 차트로 위험 수준 시각화
-- **최근 결과**: 최근 처리된 이벤트 목록
-- **관리자 기능**: 로그인 후 이벤트 처리 제어
+### Features
+- **Real-time Metrics**: Event processing statistics and risk distribution
+- **Risk Charts**: Donut charts visualizing risk levels
+- **Recent Results**: List of recently processed events
+- **Admin Features**: Event processing control after login
 
-## 🔐 인증
+## 🔐 Authentication
 
-관리자 엔드포인트는 JWT 토큰 기반 인증이 필요합니다.
+Admin endpoints require JWT token-based authentication.
 
-### 테스트 계정
+### Test Accounts
 
-| 사용자명 | 비밀번호 | 권한 |
-|---------|---------|------|
-| `admin` | `admin123` | 관리자 |
-| `analyst` | `analyst123` | 분석가 |
+| Username | Password | Role |
+|----------|----------|------|
+| `admin` | `admin123` | Admin |
+| `analyst` | `analyst123` | Analyst |
 
-### 로그인 방법
+### Login Method
 
 ```bash
-# 토큰 발급
+# Obtain token
 curl -X POST "http://localhost:8000/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=admin&password=admin123"
 
-# 응답 예시
+# Response example
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer"
 }
 ```
 
-### 보호된 엔드포인트 사용
+### Using Protected Endpoints
 
 ```bash
-# 인증 헤더와 함께 요청
+# Request with authorization header
 curl -H "Authorization: Bearer YOUR_TOKEN" \
   http://localhost:8000/compliance/summary
 ```
 
-## 📚 API 문서
+## 📚 API Documentation
 
-### 공개 엔드포인트
+### Public Endpoints
 
-| 메서드 | 엔드포인트 | 설명 |
-|--------|-----------|------|
-| `GET` | `/` | 웹 대시보드 |
-| `GET` | `/api` | 헬스체크 |
-| `POST` | `/events` | 이벤트 수집 |
-| `POST` | `/token` | JWT 토큰 발급 |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/` | Web dashboard |
+| `GET` | `/api` | Health check |
+| `POST` | `/events` | Event collection |
+| `POST` | `/token` | JWT token issuance |
 
-### 보호된 엔드포인트 (인증 필요)
+### Protected Endpoints (Authentication Required)
 
-| 메서드 | 엔드포인트 | 설명 |
-|--------|-----------|------|
-| `POST` | `/process/one` | 단일 이벤트 처리 |
-| `POST` | `/process/drain` | 모든 대기 이벤트 처리 |
-| `GET` | `/stats/summary` | 처리 통계 요약 |
-| `GET` | `/results/latest` | 최근 처리 결과 |
-| `GET` | `/compliance/summary` | 위험 수준 요약 |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/process/one` | Process single event |
+| `POST` | `/process/drain` | Process all pending events |
+| `GET` | `/stats/summary` | Processing statistics summary |
+| `GET` | `/results/latest` | Latest processing results |
+| `GET` | `/compliance/summary` | Risk level summary |
 
-### 이벤트 모델
+### Event Model
 
 ```json
 {
@@ -192,71 +192,71 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 }
 ```
 
-## 🛠️ 기술 스택
+## 🛠️ Tech Stack
 
-### 백엔드
-- **Python 3.12+**: 메인 프로그래밍 언어
-- **FastAPI**: 고성능 웹 프레임워크
-- **SQLAlchemy**: ORM 및 데이터베이스 관리
-- **Pydantic**: 데이터 검증 및 직렬화
+### Backend
+- **Python 3.12+**: Main programming language
+- **FastAPI**: High-performance web framework
+- **SQLAlchemy**: ORM and database management
+- **Pydantic**: Data validation and serialization
 
-### 머신러닝 & 분석
-- **scikit-learn**: ML 기반 이상 감지
-- **NumPy**: 수치 계산
-- **Chart.js**: 데이터 시각화
+### Machine Learning & Analytics
+- **scikit-learn**: ML-based anomaly detection
+- **NumPy**: Numerical computing
+- **Chart.js**: Data visualization
 
-### 보안
-- **PyJWT**: JWT 토큰 처리
-- **PassLib**: 비밀번호 해싱
-- **python-multipart**: 폼 데이터 처리
+### Security
+- **PyJWT**: JWT token handling
+- **PassLib**: Password hashing
+- **python-multipart**: Form data processing
 
-### 개발 도구
-- **pytest**: 단위 테스트
-- **Alembic**: 데이터베이스 마이그레이션
-- **Uvicorn**: ASGI 서버
+### Development Tools
+- **pytest**: Unit testing
+- **Alembic**: Database migrations
+- **Uvicorn**: ASGI server
 
-## 📁 프로젝트 구조
+## 📁 Project Structure
 
 ```
 ott-compliance-events-pipeline/
 ├── src/
 │   └── app/
 │       ├── __init__.py
-│       ├── main.py              # FastAPI 애플리케이션
-│       ├── auth.py              # JWT 인증 시스템
-│       ├── models.py            # SQLAlchemy 모델
-│       ├── schemas.py           # Pydantic 스키마
-│       ├── db.py                # 데이터베이스 연결
-│       ├── queue.py             # 큐 구현
-│       ├── consumer.py          # 이벤트 소비자
-│       ├── compliance_rules.py  # 위험 분석 규칙
+│       ├── main.py              # FastAPI application
+│       ├── auth.py              # JWT authentication system
+│       ├── models.py            # SQLAlchemy models
+│       ├── schemas.py           # Pydantic schemas
+│       ├── db.py                # Database connection
+│       ├── queue.py             # Queue implementation
+│       ├── consumer.py          # Event consumer
+│       ├── compliance_rules.py  # Risk analysis rules
 │       └── templates/
-│           └── dashboard.html   # 웹 대시보드
+│           └── dashboard.html   # Web dashboard
 ├── scripts/
-│   └── generate_fake_events.py  # 테스트 데이터 생성기
+│   └── generate_fake_events.py  # Test data generator
 ├── tests/
-│   └── test_app.py             # 단위 테스트
-├── requirements.txt            # Python 의존성
-├── README.md                   # 프로젝트 문서
-└── LICENSE                     # MIT 라이선스
+│   └── test_app.py             # Unit tests
+├── requirements.txt            # Python dependencies
+├── README.md                   # Project documentation
+└── LICENSE                     # MIT License
 ```
 
-## 🧪 테스트
+## 🧪 Testing
 
 ```bash
-# 모든 테스트 실행
+# Run all tests
 pytest tests/
 
-# 상세 출력
+# Detailed output
 pytest tests/ -v
 
-# 특정 테스트 실행
+# Run specific test
 pytest tests/test_app.py::test_event_schema -v
 ```
 
-## 🤝 기여
+## 🤝 Contributing
 
-기여를 환영합니다! 이슈를 보고하거나 풀 리퀘스트를 보내주세요.
+Contributions are welcome! Please report issues or submit pull requests.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
@@ -264,10 +264,10 @@ pytest tests/test_app.py::test_event_schema -v
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📄 라이선스
+## 📄 License
 
-이 프로젝트는 MIT 라이선스 하에 있습니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ---
 
-**문의**: 문제가 있거나 질문이 있으시면 [이슈](https://github.com/deokhwajeong/ott-compliance-events-pipeline/issues)를 열어주세요.
+**Contact**: If you have any issues or questions, please open an [issue](https://github.com/deokhwajeong/ott-compliance-events-pipeline/issues).
