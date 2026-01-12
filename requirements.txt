@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+pydantic
+pydantic-settings
+sqlalchemy
+alembic
+python-dotenv
+requests
+jinja2
+pytest
+scikit-learn
+python-jose[cryptography]
+passlib[bcrypt]
+redis
+aiokafka
+kafka-python
