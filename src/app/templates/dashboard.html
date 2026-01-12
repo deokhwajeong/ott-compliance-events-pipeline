@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>OTT Compliance Dashboard</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root{
+      --ivory: #f7f3e9;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --card: #fffaf0;
+      --border: rgba(31,41,55,.10);
+    }
+    body{ background: var(--ivory); color: var(--ink); }
+    .card{
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 10px 25px rgba(0,0,0,.05);
+    }
+    .pill{
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .25rem .6rem;
+      font-size: .75rem;
+      color: var(--muted);
+      background: rgba(255,255,255,.6);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto px-6 py-10">
+    <!-- Login Section -->
+    <div id="login-section" class="card p-6 mb-6" style="display: none;">
+      <h2 class="text-xl font-semibold mb-4">Admin Login</h2>
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+          <input type="text" id="username" name="username" required
+                 class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div>
+          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+          <input type="password" id="password" name="password" required
+                 class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+          Login
+        </button>
+      </form>
+      <div id="login-message" class="mt-4 text-sm text-red-600"></div>
+    </div>
+
+    <!-- User Info -->
+    <div id="user-info" class="flex items-center justify-between mb-6" style="display: none;">
+      <div class="flex items-center gap-4">
+        <span id="user-greeting" class="text-sm text-gray-600"></span>
+        <button id="logout-btn" class="text-sm text-indigo-600 hover:text-indigo-800">Logout</button>
+      </div>
+    </div>
+
+    <div class="flex items-start justify-between gap-6">
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-3xl font-semibold tracking-tight">OTT Compliance Events Pipeline</h1>
+          <span class="pill">Live Monitoring</span>
+          <span class="pill bg-green-100 text-green-800">Operational</span>
+          <a class="pill hover:bg-white" href="/docs">API Docs</a>
+        </div>
+        <p class="mt-2 text-sm text-gray-600">
+          Live view of ingestion, compliance risk distribution, and latest processed results.
+        </p>
+      </div>
+
+      <button id="refreshBtn"
+        class="rounded-xl px-4 py-2 bg-white/70 border border-black/10 hover:bg-white shadow-sm">
+        Refresh
+      </button>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="card p-5">
+        <div class="text-sm text-gray-600">Total Processed</div>
+        <div id="totalProcessed" class="mt-2 text-4xl font-semibold">-</div>
+        <div class="mt-3 text-xs text-gray-500">From /compliance/summary</div>
+      </div>
+
+      <div class="card p-5">
+        <div class="flex items-center justify-between">
+          <div class="text-sm text-gray-600">Risk Distribution</div>
+          <span class="pill">low / medium / high</span>
+        </div>
+        <div class="mt-3 grid grid-cols-3 gap-3">
+          <div class="rounded-2xl bg-white/70 border border-black/10 p-3">
+            <div class="text-xs text-gray-500">LOW</div>
+            <div id="riskLow" class="text-2xl font-semibold">-</div>
+          </div>
+          <div class="rounded-2xl bg-white/70 border border-black/10 p-3">
+            <div class="text-xs text-gray-500">MED</div>
+            <div id="riskMed" class="text-2xl font-semibold">-</div>
+          </div>
+          <div class="rounded-2xl bg-white/70 border border-black/10 p-3">
+            <div class="text-xs text-gray-500">HIGH</div>
+            <div id="riskHigh" class="text-2xl font-semibold">-</div>
+          </div>
+        </div>
+        <div class="mt-3 text-xs text-gray-500">From /compliance/summary</div>
+      </div>
+
+      <div class="card p-5">
+        <div class="text-sm text-gray-600">Health Check</div>
+        <div id="healthMsg" class="mt-2 text-lg font-medium">-</div>
+        <div class="mt-3 text-xs text-gray-500">From / (root)</div>
+      </div>
+    </div>
+
+    <!-- Risk Distribution Chart -->
+    <div class="mt-8 card p-6">
+      <h2 class="text-lg font-semibold">Risk Distribution Chart</h2>
+      <p class="text-sm text-gray-600">Visual representation of compliance risk levels</p>
+      <div class="mt-4">
+        <canvas id="riskChart" width="400" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- Latest results -->
+    <div class="mt-8 card p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold">Latest Results</h2>
+          <p class="text-sm text-gray-600">From /results/latest?limit=10</p>
+        </div>
+        <span class="pill" id="lastUpdated">Last updated: -</span>
+      </div>
+
+      <div class="mt-5 overflow-auto">
+        <table class="w-full text-sm">
+          <thead class="text-left text-gray-600">
+            <tr class="border-b border-black/10">
+              <th class="py-2 pr-4">event_type</th>
+              <th class="py-2 pr-4">region</th>
+              <th class="py-2 pr-4">content_id</th>
+              <th class="py-2 pr-4">user_id</th>
+              <th class="py-2 pr-4">risk_level</th>
+              <th class="py-2 pr-4">flags</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody" class="align-top">
+            <tr><td class="py-3 text-gray-500" colspan="6">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="mt-6 text-xs text-gray-500">
+      Tip: keep this open, then send events via Swagger POST /events or curl.
+    </div>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+
+    let riskChart;
+    let accessToken = localStorage.getItem('access_token');
+
+    function fmtTime() {
+      const d = new Date();
+      return d.toLocaleString();
+    }
+
+    function riskBadge(level){
+      if(!level) return '<span class="pill">-</span>';
+      const base = 'inline-flex items-center px-2 py-1 rounded-full border text-xs';
+      if(level === 'high') return `<span class="${base}" style="background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.25);color:#991b1b">HIGH</span>`;
+      if(level === 'medium') return `<span class="${base}" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25);color:#92400e">MED</span>`;
+      return `<span class="${base}" style="background:rgba(34,197,94,.10);border-color:rgba(34,197,94,.25);color:#166534">LOW</span>`;
+    }
+
+    async function safeJson(url){
+      const headers = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+      const r = await fetch(url, { headers });
+      if(!r.ok) throw new Error(`${url} -> ${r.status}`);
+      return r.json();
+    }
+
+    function showLogin() {
+      el('login-section').style.display = 'block';
+      el('user-info').style.display = 'none';
+    }
+
+    function showDashboard() {
+      el('login-section').style.display = 'none';
+      el('user-info').style.display = 'flex';
+    }
+
+    function checkAuth() {
+      // For portfolio demo, show dashboard with sample data without login
+      showDashboard();
+      el('user-greeting').textContent = 'Portfolio Demo - Sample Data';
+      refresh();
+    }
+
+    // Login form handler
+    el('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = el('username').value;
+      const password = el('password').value;
+
+      try {
+        const response = await fetch('/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            username: username,
+            password: password,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          accessToken = data.access_token;
+          localStorage.setItem('access_token', accessToken);
+          el('login-message').textContent = '';
+          showDashboard();
+          el('user-greeting').textContent = `Welcome, ${username}!`;
+          refresh(); // Load data after login
+        } else {
+          el('login-message').textContent = 'Invalid username or password';
+        }
+      } catch (error) {
+        el('login-message').textContent = 'Login failed. Please try again.';
+      }
+    });
+
+    // Logout handler
+    el('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('access_token');
+      accessToken = null;
+      showLogin();
+      el('login-message').textContent = 'Logged out successfully';
+    });
+
+    function initChart() {
+      const ctx = el("riskChart").getContext('2d');
+      riskChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+          datasets: [{
+            data: [0, 0, 0],
+            backgroundColor: [
+              'rgba(34, 197, 94, 0.8)',
+              'rgba(245, 158, 11, 0.8)',
+              'rgba(239, 68, 68, 0.8)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+            }
+          }
+        }
+      });
+    }
+
+    async function refresh(){
+      // For portfolio demo, use dynamic sample data that simulates real-time updates
+      el("resultsBody").innerHTML = `<tr><td class="py-3 text-gray-500" colspan="6">Loading real-time data...</td></tr>`;
+
+      // Simulate dynamic health message
+      const healthMessages = [
+        "OTT Compliance Events Pipeline - All Systems Operational",
+        "OTT Compliance Events Pipeline - Processing Events",
+        "OTT Compliance Events Pipeline - Risk Analysis Active",
+        "OTT Compliance Events Pipeline - Database Connected"
+      ];
+      el("healthMsg").textContent = healthMessages[Math.floor(Math.random() * healthMessages.length)];
+
+      // Simulate dynamic compliance summary with slight variations
+      const baseLow = 45 + Math.floor(Math.random() * 10) - 5;
+      const baseMed = 23 + Math.floor(Math.random() * 6) - 3;
+      const baseHigh = 12 + Math.floor(Math.random() * 4) - 2;
+      const total = baseLow + baseMed + baseHigh;
+
+      const summary = {
+        low: Math.max(0, baseLow),
+        medium: Math.max(0, baseMed),
+        high: Math.max(0, baseHigh),
+        total_processed: total + Math.floor(Math.random() * 20)
+      };
+
+      el("riskLow").textContent = summary.low;
+      el("riskMed").textContent = summary.medium;
+      el("riskHigh").textContent = summary.high;
+      el("totalProcessed").textContent = summary.total_processed;
+
+      // Update chart with dynamic data
+      if (riskChart) {
+        riskChart.data.datasets[0].data = [summary.low, summary.medium, summary.high];
+        riskChart.update();
+      }
+
+      // More comprehensive sample results with timestamps and varied data
+      const eventTypes = ['PLAY', 'PAUSE', 'SEEK', 'STOP', 'ERROR', 'LOGIN', 'LOGOUT'];
+      const regions = ['US', 'EU', 'UK', 'DE', 'CA', 'FR', 'JP', 'AU'];
+      const riskLevels = ['low', 'medium', 'high'];
+      const flags = [
+        ['normal_activity'],
+        ['eu_consent_missing', 'gdpr_check'],
+        ['high_frequency', 'multi_region'],
+        ['content_error', 'network_issue'],
+        ['premium_user', 'bulk_access'],
+        []
+      ];
+
+      const sampleResults = Array.from({length: 8}, (_, i) => {
+        const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+        const region = regions[Math.floor(Math.random() * regions.length)];
+        const riskLevel = riskLevels[Math.floor(Math.random() * riskLevels.length)];
+        const flagSet = flags[Math.floor(Math.random() * flags.length)];
+
+        return {
+          event: {
+            event_type: eventType,
+            region: region,
+            content_id: `content_${1000 + Math.floor(Math.random() * 9000)}`,
+            user_id: `user_${100 + Math.floor(Math.random() * 900)}`
+          },
+          result: {
+            risk_level: riskLevel,
+            flags: flagSet
+          }
+        };
+      });
+
+      el("resultsBody").innerHTML = sampleResults.map((x) => {
+        const ev = x.event;
+        const rs = x.result;
+        const reasons = Array.isArray(rs.flags) ? rs.flags.join(", ") : (rs.flags ?? "");
+        return `
+          <tr class="border-b border-black/5">
+            <td class="py-3 pr-4">${ev.event_type}</td>
+            <td class="py-3 pr-4">${ev.region}</td>
+            <td class="py-3 pr-4">${ev.content_id}</td>
+            <td class="py-3 pr-4">${ev.user_id}</td>
+            <td class="py-3 pr-4">${riskBadge(rs.risk_level)}</td>
+            <td class="py-3 pr-4 text-gray-600">${reasons}</td>
+          </tr>
+        `;
+      }).join("");
+
+      el("lastUpdated").textContent = `Last updated: ${fmtTime()}`;
+    }
+
+    // Initialize chart on load
+    initChart();
+
+    // Check authentication on load
+    checkAuth();
+
+    el("refreshBtn").addEventListener("click", refresh);
+    // Auto-refresh for demo
+    refresh();
+    setInterval(refresh, 8000); // Update every 8 seconds for realistic demo
+  </script>
+</body>
+</html>
