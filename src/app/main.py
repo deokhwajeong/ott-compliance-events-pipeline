@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, status, Depends, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -12,6 +12,13 @@ from .db import get_db, engine
 from .models import Base, RawEvent, ProcessedEvent, AggregateStats
 from .auth import authenticate_user, create_access_token, get_current_active_user, Token, User, fake_users_db, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+from .metrics import MetricsRecorder
+from .audit_log import audit_logger, AuditAction, ActorRole
+from .report_generator import report_generator
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -72,6 +79,9 @@ async def ingest_event(event: Event, db: Session = Depends(get_db)):
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+    
+    # 메트릭 기록
+    MetricsRecorder.record_event(event.event_type, event.user_id)
     
     enqueue_event(event.model_dump())
     return {"status": "queued"}
@@ -177,3 +187,138 @@ async def compliance_summary(db: Session = Depends(get_db), current_user: User =
         total += count
     summary["total_processed"] = total
     return summary
+
+
+# ========================
+# Prometheus 메트릭 엔드포인트
+# ========================
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus 메트릭 엔드포인트"""
+    return StreamingResponse(
+        generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
+
+
+# ========================
+# 감시 로그 엔드포인트
+# ========================
+
+@app.post("/api/v1/audit/log")
+async def log_audit(
+    action: str,
+    actor_id: str,
+    target_user_id: str = None,
+    details: dict = None,
+    current_user: User = Depends(get_current_active_user)
+):
+    """감시 로그 기록"""
+    try:
+        audit_log = audit_logger.log(
+            action=AuditAction[action.upper()],
+            actor_id=actor_id,
+            actor_role=ActorRole.ADMIN,
+            target_user_id=target_user_id,
+            details=details
+        )
+        return {
+            "status": "logged",
+            "log_id": audit_log.timestamp,
+            "action": audit_log.action
+        }
+    except Exception as e:
+        logger.error(f"감시 로그 기록 실패: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post("/api/v1/audit/data-access")
+async def log_data_access(
+    target_user_id: str,
+    resource: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """데이터 접근 로그"""
+    audit_logger.log_data_access(
+        actor_id=current_user.username,
+        target_user_id=target_user_id,
+        resource=resource
+    )
+    return {"status": "logged", "action": "data_access"}
+
+
+@app.post("/api/v1/audit/data-export")
+async def log_data_export(
+    target_user_id: str,
+    export_format: str = "json",
+    current_user: User = Depends(get_current_active_user)
+):
+    """데이터 내보내기 로그"""
+    audit_logger.log_data_export(
+        actor_id=current_user.username,
+        target_user_id=target_user_id,
+        export_format=export_format
+    )
+    return {"status": "logged", "action": "data_export"}
+
+
+@app.post("/api/v1/audit/data-delete")
+async def log_data_delete(
+    target_user_id: str,
+    reason: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """데이터 삭제 로그"""
+    audit_logger.log_data_delete(
+        actor_id=current_user.username,
+        target_user_id=target_user_id,
+        reason=reason
+    )
+    return {"status": "logged", "action": "data_delete"}
+
+
+# ========================
+# 규정 준수 리포트 엔드포인트
+# ========================
+
+@app.get("/api/v1/reports/daily")
+async def get_daily_report(current_user: User = Depends(get_current_active_user)):
+    """일일 규정 준수 리포트"""
+    report = report_generator.generate_daily_report()
+    return report.to_dict()
+
+
+@app.get("/api/v1/reports/daily/html")
+async def get_daily_report_html(current_user: User = Depends(get_current_active_user)):
+    """일일 규정 준수 리포트 (HTML)"""
+    report = report_generator.generate_daily_report()
+    return HTMLResponse(content=report.to_html())
+
+
+@app.get("/api/v1/reports/weekly")
+async def get_weekly_report(current_user: User = Depends(get_current_active_user)):
+    """주간 규정 준수 리포트"""
+    report = report_generator.generate_weekly_report()
+    return report.to_dict()
+
+
+@app.get("/api/v1/reports/weekly/html")
+async def get_weekly_report_html(current_user: User = Depends(get_current_active_user)):
+    """주간 규정 준수 리포트 (HTML)"""
+    report = report_generator.generate_weekly_report()
+    return HTMLResponse(content=report.to_html())
+
+
+@app.get("/api/v1/reports/monthly")
+async def get_monthly_report(current_user: User = Depends(get_current_active_user)):
+    """월간 규정 준수 리포트"""
+    report = report_generator.generate_monthly_report()
+    return report.to_dict()
+
+
+@app.get("/api/v1/reports/monthly/html")
+async def get_monthly_report_html(current_user: User = Depends(get_current_active_user)):
+    """월간 규정 준수 리포트 (HTML)"""
+    report = report_generator.generate_monthly_report()
+    return HTMLResponse(content=report.to_html())
