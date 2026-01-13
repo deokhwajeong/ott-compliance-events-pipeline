@@ -1,4 +1,4 @@
-"""감시 로그 시스템"""
+"""Audit Log System"""
 
 import logging
 import json
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class AuditAction(str, Enum):
-    """감시 로그 액션"""
+    """Audit log actions"""
     LOGIN = "login"
     LOGOUT = "logout"
     DATA_ACCESS = "data_access"
@@ -30,7 +30,7 @@ class AuditAction(str, Enum):
 
 
 class ActorRole(str, Enum):
-    """행위자 역할"""
+    """Actor roles"""
     USER = "user"
     ADMIN = "admin"
     SYSTEM = "system"
@@ -39,7 +39,7 @@ class ActorRole(str, Enum):
 
 @dataclass
 class AuditLog:
-    """감시 로그 항목"""
+    """Audit log entry"""
     timestamp: str
     action: str
     actor_id: str
@@ -52,24 +52,24 @@ class AuditLog:
     user_agent: Optional[str] = None
     
     def to_dict(self):
-        """딕셔너리로 변환"""
+        """Convert to dictionary"""
         return asdict(self)
     
     def to_json(self):
-        """JSON 문자열로 변환"""
+        """Convert to JSON string"""
         return json.dumps(self.to_dict())
 
 
 class AuditLogger:
-    """감시 로그 시스템"""
+    """Audit logging system"""
     
     def __init__(self):
         self.logger = logging.getLogger("audit")
         self._setup_logger()
     
     def _setup_logger(self):
-        """감시 로거 설정"""
-        # JSON 포맷 로거
+        """Setup audit logger"""
+        # JSON format logger
         handler = logging.FileHandler('/tmp/audit_logs.jsonl')
         handler.setLevel(logging.INFO)
         formatter = logging.Formatter(
@@ -91,7 +91,7 @@ class AuditLogger:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None
     ) -> AuditLog:
-        """감시 로그 기록"""
+        """Record audit log"""
         
         audit_log = AuditLog(
             timestamp=datetime.utcnow().isoformat(),
@@ -106,10 +106,10 @@ class AuditLogger:
             user_agent=user_agent
         )
         
-        # JSON 로그 기록
+        # Record JSON log
         self.logger.info(audit_log.to_json())
         
-        # Kafka로도 발행
+        # Also publish to Kafka
         try:
             from .kafka_manager import kafka_manager
             from .kafka_config import kafka_settings
@@ -121,14 +121,14 @@ class AuditLogger:
                     event=audit_log.to_dict()
                 )
             
-            # 이벤트 루프가 있으면 실행, 없으면 스킵
+            # Run if event loop exists, skip otherwise
             try:
                 asyncio.run(_send())
             except RuntimeError:
-                # 이벤트 루프가 없을 경우 스킵
+                # Skip if event loop doesn't exist
                 pass
         except Exception as e:
-            logger.warning(f"감시 로그 Kafka 발행 실패: {e}")
+            logger.warning(f"Audit log Kafka publish failed: {e}")
         
         return audit_log
     
@@ -140,7 +140,7 @@ class AuditLogger:
         actor_role: ActorRole = ActorRole.ADMIN,
         ip_address: Optional[str] = None
     ):
-        """데이터 접근 로그"""
+        """Data access log"""
         return self.log(
             action=AuditAction.DATA_ACCESS,
             actor_id=actor_id,
@@ -159,7 +159,7 @@ class AuditLogger:
         actor_role: ActorRole = ActorRole.ADMIN,
         ip_address: Optional[str] = None
     ):
-        """데이터 내보내기 로그"""
+        """Data export log"""
         return self.log(
             action=AuditAction.DATA_EXPORT,
             actor_id=actor_id,
@@ -178,7 +178,7 @@ class AuditLogger:
         actor_role: ActorRole = ActorRole.ADMIN,
         ip_address: Optional[str] = None
     ):
-        """데이터 삭제 로그"""
+        """Data delete log"""
         return self.log(
             action=AuditAction.DATA_DELETE,
             actor_id=actor_id,
@@ -196,7 +196,7 @@ class AuditLogger:
         result: str,
         details: Optional[dict] = None
     ):
-        """규정 준수 검사 로그"""
+        """Compliance check log"""
         return self.log(
             action=AuditAction.COMPLIANCE_CHECK,
             actor_id=actor_id,
@@ -215,7 +215,7 @@ class AuditLogger:
         severity: str,
         regulation: str
     ):
-        """규정 위반 로그"""
+        """Violation log"""
         return self.log(
             action=AuditAction.VIOLATION_RECORDED,
             actor_id=actor_id,
@@ -229,5 +229,5 @@ class AuditLogger:
         )
 
 
-# 전역 감시 로거 인스턴스
+# Global audit logger instance
 audit_logger = AuditLogger()

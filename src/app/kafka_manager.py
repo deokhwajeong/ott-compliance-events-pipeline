@@ -13,25 +13,25 @@ logger = logging.getLogger(__name__)
 
 
 class KafkaManager:
-    """Kafka 프로듀서/컨슈머 관리"""
+    """Kafka Producer/Consumer Management"""
     
     def __init__(self):
         self.producer: Optional[AIOKafkaProducer] = None
         self.consumer: Optional[AIOKafkaConsumer] = None
-        self.partitioner_map = {}  # 파티션 캐시
+        self.partitioner_map = {}  # Partition cache
     
     async def init_producer(self):
-        """Kafka 프로듀서 초기화"""
+        """Initialize Kafka Producer"""
         self.producer = AIOKafkaProducer(
             bootstrap_servers=kafka_settings.bootstrap_servers,
             compression_type='snappy',
             value_serializer=lambda v: json.dumps(v, default=str).encode('utf-8')
         )
         await self.producer.start()
-        logger.info("Kafka Producer 시작됨")
+        logger.info("Kafka Producer started")
     
     async def init_consumer(self, topic: str, callback: Callable):
-        """Kafka 컨슈머 초기화"""
+        """Initialize Kafka Consumer"""
         self.consumer = AIOKafkaConsumer(
             topic,
             bootstrap_servers=kafka_settings.bootstrap_servers,
@@ -41,24 +41,24 @@ class KafkaManager:
             value_deserializer=lambda m: json.loads(m.decode('utf-8'))
         )
         await self.consumer.start()
-        logger.info(f"Kafka Consumer 시작됨: {topic}")
+        logger.info(f"Kafka Consumer started: {topic}")
         
-        # 메시지 처리
+        # Message processing
         try:
             async for message in self.consumer:
                 await callback(message.value)
         except Exception as e:
-            logger.error(f"컨슈머 에러: {e}")
+            logger.error(f"Consumer error: {e}")
         finally:
             await self.consumer.stop()
     
     async def send_event(self, topic: str, event: dict, partition_key: Optional[str] = None):
-        """이벤트 발행"""
+        """Publish event"""
         if not self.producer:
-            raise RuntimeError("Producer 초기화되지 않음")
+            raise RuntimeError("Producer not initialized")
         
         try:
-            # 파티션 키: user_id 또는 device_id 기반 (샤딩)
+            # Partition key: based on user_id or device_id (sharding)
             key = partition_key.encode('utf-8') if partition_key else None
             
             await self.producer.send_and_wait(
@@ -67,15 +67,15 @@ class KafkaManager:
                 key=key,
                 timestamp_ms=int(datetime.utcnow().timestamp() * 1000)
             )
-            logger.debug(f"이벤트 발행됨 [{topic}]: {event}")
+            logger.debug(f"Event published [{topic}]: {event}")
         except KafkaError as e:
-            logger.error(f"발행 실패: {e}")
+            logger.error(f"Publish failed: {e}")
             raise
     
     async def batch_send(self, topic: str, events: list[dict], partition_key: Optional[str] = None):
-        """배치 발행 (성능 최적화)"""
+        """Batch publish (performance optimization)"""
         if not self.producer:
-            raise RuntimeError("Producer 초기화되지 않음")
+            raise RuntimeError("Producer not initialized")
         
         futures = []
         for event in events:
@@ -84,15 +84,15 @@ class KafkaManager:
             futures.append(future)
         
         await asyncio.gather(*futures)
-        logger.info(f"배치 발행 완료: {len(events)}개 이벤트")
+        logger.info(f"Batch publish complete: {len(events)} events")
     
     async def close(self):
-        """리소스 정리"""
+        """Cleanup resources"""
         if self.producer:
             await self.producer.stop()
         if self.consumer:
             await self.consumer.stop()
-        logger.info("Kafka 연결 종료")
+        logger.info("Kafka connection closed")
 
 
 kafka_manager = KafkaManager()
@@ -100,7 +100,7 @@ kafka_manager = KafkaManager()
 
 @asynccontextmanager
 async def kafka_context():
-    """Kafka 라이프사이클 관리"""
+    """Manage Kafka lifecycle"""
     await kafka_manager.init_producer()
     try:
         yield kafka_manager
