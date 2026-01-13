@@ -9,7 +9,7 @@ from .kafka_config import kafka_settings
 
 logger = logging.getLogger(__name__)
 
-# 폴백: Kafka 미사용 시 로컬 메모리 큐
+# Fallback: Local in-memory queue when Kafka is not used
 _event_queue: deque = deque()
 
 # Statistics
@@ -23,7 +23,7 @@ _stats = {
 
 @dataclass
 class Event:
-    """이벤트 모델"""
+    """Event model"""
     event_id: str
     user_id: str
     device_id: str
@@ -43,7 +43,7 @@ class Event:
 
 
 class ComplianceEventQueue:
-    """Kafka 기반 규정 준수 이벤트 큐"""
+    """Kafka-based compliance event queue"""
     
     def __init__(self, use_kafka: bool = False):
         self.kafka = kafka_manager
@@ -51,29 +51,29 @@ class ComplianceEventQueue:
         self.processed_count = 0
     
     async def enqueue_event(self, event: Event) -> bool:
-        """이벤트 큐에 추가"""
+        """Add event to queue"""
         try:
             if self.use_kafka:
-                # Kafka로 발행 (파티션 키: user_id)
+                # Publish to Kafka (partition key: user_id)
                 await self.kafka.send_event(
                     topic=kafka_settings.topics["events"],
                     event=event.to_dict(),
                     partition_key=event.user_id
                 )
             else:
-                # 로컬 폴백
+                # Local fallback
                 _event_queue.append(event.to_dict())
                 _stats["queue_size"] = len(_event_queue)
             
             _stats["enqueued"] += 1
             return True
         except Exception as e:
-            logger.error(f"이벤트 큐 실패: {e}")
+            logger.error(f"Failed to enqueue event: {e}")
             _stats["errors"] += 1
             return False
     
     async def enqueue_anomaly(self, anomaly_data: dict) -> bool:
-        """이상 탐지 결과 발행"""
+        """Publish anomaly detection results"""
         try:
             if self.use_kafka:
                 await self.kafka.send_event(
@@ -83,12 +83,12 @@ class ComplianceEventQueue:
                 )
             return True
         except Exception as e:
-            logger.error(f"이상 발행 실패: {e}")
+            logger.error(f"Failed to publish anomaly: {e}")
             _stats["errors"] += 1
             return False
     
     async def enqueue_compliance_violation(self, violation: dict) -> bool:
-        """규정 위반 기록"""
+        """Record compliance violation"""
         try:
             if self.use_kafka:
                 await self.kafka.send_event(
@@ -98,12 +98,12 @@ class ComplianceEventQueue:
                 )
             return True
         except Exception as e:
-            logger.error(f"위반 기록 실패: {e}")
+            logger.error(f"Failed to record violation: {e}")
             _stats["errors"] += 1
             return False
     
     async def enqueue_audit_log(self, audit_entry: dict) -> bool:
-        """감시 로그 기록"""
+        """Record audit log"""
         try:
             if self.use_kafka:
                 await self.kafka.send_event(
@@ -113,12 +113,12 @@ class ComplianceEventQueue:
                 )
             return True
         except Exception as e:
-            logger.error(f"감시 로그 실패: {e}")
+            logger.error(f"Failed to record audit log: {e}")
             _stats["errors"] += 1
             return False
     
     async def subscribe_to_events(self, callback: Callable):
-        """이벤트 구독"""
+        """Subscribe to events"""
         if self.use_kafka:
             await self.kafka.init_consumer(
                 topic=kafka_settings.topics["events"],
@@ -126,11 +126,11 @@ class ComplianceEventQueue:
             )
 
 
-# 전역 큐 인스턴스
+# Global queue instance
 event_queue = ComplianceEventQueue(use_kafka=False)
 
 
-# 레거시 API 호환성
+# Legacy API compatibility
 def enqueue_event(event: dict) -> None:
     """Add an event to the queue."""
     _event_queue.append(event)

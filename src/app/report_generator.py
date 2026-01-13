@@ -1,4 +1,4 @@
-"""자동 규정 준수 리포트 생성"""
+"""Automatic Compliance Report Generation"""
 
 import logging
 from datetime import datetime, timedelta
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ComplianceMetrics:
-    """규정 준수 메트릭"""
+    """Compliance metrics"""
     regulation: str
     total_violations: int
     critical_violations: int
@@ -26,7 +26,7 @@ class ComplianceMetrics:
 
 @dataclass
 class AnomalyMetrics:
-    """이상 탐지 메트릭"""
+    """Anomaly detection metrics"""
     total_anomalies: int
     high_risk_anomalies: int
     medium_risk_anomalies: int
@@ -38,34 +38,34 @@ class AnomalyMetrics:
 
 @dataclass
 class ComplianceReport:
-    """규정 준수 리포트"""
+    """Compliance report"""
     report_id: str
     report_date: str
     period_start: str
     period_end: str
     
-    # GDPR 메트릭
+    # GDPR metrics
     gdpr_metrics: Optional[ComplianceMetrics] = None
     
-    # CCPA 메트릭
+    # CCPA metrics
     ccpa_metrics: Optional[ComplianceMetrics] = None
     
-    # 이상 탐지 메트릭
+    # Anomaly detection metrics
     anomaly_metrics: Optional[AnomalyMetrics] = None
     
-    # 이벤트 통계
+    # Event statistics
     total_events: int = 0
     processed_events: int = 0
     failed_events: int = 0
     
-    # 주요 발견사항
+    # Key findings
     key_findings: List[str] = None
     
-    # 권장사항
+    # Recommendations
     recommendations: List[str] = None
     
     def to_dict(self):
-        """딕셔너리로 변환"""
+        """Convert to dictionary"""
         return {
             "report_id": self.report_id,
             "report_date": self.report_date,
@@ -82,17 +82,17 @@ class ComplianceReport:
         }
     
     def to_json(self):
-        """JSON 문자열로 변환"""
+        """Convert to JSON string"""
         return json.dumps(self.to_dict(), indent=2)
     
     def to_html(self):
-        """HTML 리포트 생성"""
+        """Generate HTML report"""
         html = f"""
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>OTT 규정 준수 리포트</title>
+    <title>OTT Compliance Report</title>
     <style>
         body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
         .container {{ max-width: 1200px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 8px; }}
@@ -138,12 +138,12 @@ class ComplianceReport:
 </head>
 <body>
     <div class="container">
-        <h1>📊 OTT 규정 준수 리포트</h1>
-        <p>보고서 ID: {self.report_id}</p>
-        <p>생성 일시: {self.report_date}</p>
-        <p>기간: {self.period_start} ~ {self.period_end}</p>
+        <h1>📊 OTT Compliance Report</h1>
+        <p>Report ID: {self.report_id}</p>
+        <p>Generated: {self.report_date}</p>
+        <p>Period: {self.period_start} ~ {self.period_end}</p>
         
-        <h2>📈 핵심 지표</h2>
+        <h2>📈 Key Metrics</h2>
         <div class="metrics-grid">
 """
         
@@ -151,10 +151,10 @@ class ComplianceReport:
             score_class = "score-good" if self.gdpr_metrics.compliance_score >= 90 else "score-warning" if self.gdpr_metrics.compliance_score >= 70 else "score-danger"
             html += f"""
             <div class="metric-card gdpr">
-                <div class="metric-label">GDPR 준수 점수</div>
+                <div class="metric-label">GDPR Compliance Score</div>
                 <div class="metric-value"><span class="{score_class}">{self.gdpr_metrics.compliance_score:.1f}%</span></div>
-                <div class="metric-detail">위반: {self.gdpr_metrics.total_violations}</div>
-                <div class="metric-detail">추세: {self.gdpr_metrics.trend}</div>
+                <div class="metric-detail">Violations: {self.gdpr_metrics.total_violations}</div>
+                <div class="metric-detail">Trend: {self.gdpr_metrics.trend}</div>
             </div>
 """
         
@@ -162,50 +162,50 @@ class ComplianceReport:
             score_class = "score-good" if self.ccpa_metrics.compliance_score >= 90 else "score-warning" if self.ccpa_metrics.compliance_score >= 70 else "score-danger"
             html += f"""
             <div class="metric-card ccpa">
-                <div class="metric-label">CCPA 준수 점수</div>
+                <div class="metric-label">CCPA Compliance Score</div>
                 <div class="metric-value"><span class="{score_class}">{self.ccpa_metrics.compliance_score:.1f}%</span></div>
-                <div class="metric-detail">위반: {self.ccpa_metrics.total_violations}</div>
-                <div class="metric-detail">추세: {self.ccpa_metrics.trend}</div>
+                <div class="metric-detail">Violations: {self.ccpa_metrics.total_violations}</div>
+                <div class="metric-detail">Trend: {self.ccpa_metrics.trend}</div>
             </div>
 """
         
         if self.anomaly_metrics:
             html += f"""
             <div class="metric-card anomaly">
-                <div class="metric-label">이상 탐지</div>
+                <div class="metric-label">Anomaly Detection</div>
                 <div class="metric-value">{self.anomaly_metrics.total_anomalies}</div>
-                <div class="metric-detail">고위험: {self.anomaly_metrics.high_risk_anomalies}</div>
-                <div class="metric-detail">정확도: {self.anomaly_metrics.detection_accuracy:.1f}%</div>
+                <div class="metric-detail">High Risk: {self.anomaly_metrics.high_risk_anomalies}</div>
+                <div class="metric-detail">Accuracy: {self.anomaly_metrics.detection_accuracy:.1f}%</div>
             </div>
 """
         
         html += f"""
             <div class="metric-card">
-                <div class="metric-label">이벤트 처리</div>
+                <div class="metric-label">Event Processing</div>
                 <div class="metric-value">{self.total_events}</div>
-                <div class="metric-detail">성공: {self.processed_events}</div>
-                <div class="metric-detail">실패: {self.failed_events}</div>
+                <div class="metric-detail">Success: {self.processed_events}</div>
+                <div class="metric-detail">Failed: {self.failed_events}</div>
             </div>
         </div>
 """
         
         if self.key_findings:
             html += """
-        <h2>🔍 주요 발견사항</h2>
+        <h2>🔍 Key Findings</h2>
 """
             for finding in self.key_findings:
                 html += f'        <div class="finding">{finding}</div>\n'
         
         if self.recommendations:
             html += """
-        <h2>💡 권장사항</h2>
+        <h2>💡 Recommendations</h2>
 """
             for rec in self.recommendations:
                 html += f'        <div class="recommendation">{rec}</div>\n'
         
         html += """
         <div class="footer">
-            <p>이 리포트는 자동으로 생성되었습니다.</p>
+            <p>This report was automatically generated.</p>
             <p>OTT Compliance & Event Risk Pipeline</p>
         </div>
     </div>
@@ -216,13 +216,13 @@ class ComplianceReport:
 
 
 class ReportGenerator:
-    """규정 준수 리포트 생성기"""
+    """Compliance report generator"""
     
     def __init__(self):
         self.logger = logger
     
     def generate_daily_report(self) -> ComplianceReport:
-        """일일 리포트 생성"""
+        """Generate daily report"""
         report_id = f"daily_{datetime.utcnow().strftime('%Y%m%d')}"
         period_start = (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')
         period_end = datetime.utcnow().strftime('%Y-%m-%d')
@@ -240,7 +240,7 @@ class ReportGenerator:
         )
     
     def generate_weekly_report(self) -> ComplianceReport:
-        """주간 리포트 생성"""
+        """Generate weekly report"""
         report_id = f"weekly_{datetime.utcnow().strftime('%Y%W')}"
         period_start = (datetime.utcnow() - timedelta(days=7)).strftime('%Y-%m-%d')
         period_end = datetime.utcnow().strftime('%Y-%m-%d')
@@ -258,7 +258,7 @@ class ReportGenerator:
         )
     
     def generate_monthly_report(self) -> ComplianceReport:
-        """월간 리포트 생성"""
+        """Generate monthly report"""
         today = datetime.utcnow()
         first_day = today.replace(day=1)
         period_start = first_day.strftime('%Y-%m-%d')
@@ -278,7 +278,7 @@ class ReportGenerator:
         )
     
     def _generate_gdpr_metrics(self) -> ComplianceMetrics:
-        """GDPR 메트릭 생성"""
+        """Generate GDPR metrics"""
         return ComplianceMetrics(
             regulation="GDPR",
             total_violations=2,
@@ -293,7 +293,7 @@ class ReportGenerator:
         )
     
     def _generate_ccpa_metrics(self) -> ComplianceMetrics:
-        """CCPA 메트릭 생성"""
+        """Generate CCPA metrics"""
         return ComplianceMetrics(
             regulation="CCPA",
             total_violations=1,
@@ -308,7 +308,7 @@ class ReportGenerator:
         )
     
     def _generate_anomaly_metrics(self) -> AnomalyMetrics:
-        """이상 탐지 메트릭 생성"""
+        """Generate anomaly detection metrics"""
         return AnomalyMetrics(
             total_anomalies=15,
             high_risk_anomalies=2,
@@ -320,23 +320,23 @@ class ReportGenerator:
         )
     
     def _generate_findings(self) -> List[str]:
-        """주요 발견사항 생성"""
+        """Generate key findings"""
         return [
-            "GDPR 규정 준수율이 95%로 전월 대비 3% 향상되었습니다.",
-            "이상 탐지 정확도가 94.5%를 기록했습니다.",
-            "시스템 내 총 3건의 규정 위반이 감지되었으며, 모두 해결되었습니다.",
-            "데이터 보호 정책 업데이트가 성공적으로 적용되었습니다."
+            "GDPR compliance rate improved to 95%, up 3% from previous month.",
+            "Anomaly detection accuracy reached 94.5%.",
+            "Total 3 compliance violations detected in the system, all resolved.",
+            "Data protection policy update successfully applied."
         ]
     
     def _generate_recommendations(self) -> List[str]:
-        """권장사항 생성"""
+        """Generate recommendations"""
         return [
-            "남은 1건의 미해결 CCPA 위반에 대해 즉시 조치가 필요합니다.",
-            "고위험 이상 탐지 2건에 대해 심층 조사를 수행하시기 바랍니다.",
-            "감시 로그 데이터의 정기적인 백업 정책을 수립하시기 바랍니다.",
-            "데이터 접근 권한에 대한 정기적인 검토를 권장합니다."
+            "Immediate action required for 1 unresolved CCPA violation.",
+            "Conduct deep investigation on 2 high-risk anomaly detections.",
+            "Establish regular backup policy for audit log data.",
+            "Regular review of data access permissions recommended."
         ]
 
 
-# 전역 리포트 생성기 인스턴스
+# Global report generator instance
 report_generator = ReportGenerator()

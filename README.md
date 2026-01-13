@@ -2,48 +2,54 @@
 
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128+-green.svg)](https://fastapi.tiangolo.com)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 An event collection and analysis pipeline for Smart TV/OTT platforms, including a compliance risk engine for privacy protection and anomaly detection.
 
-## 📋 Table of Contents
+---
 
-- [✨ Key Features](#-key-features)
-- [🏗️ Architecture](#️-architecture)
-- [🚀 Quick Start](#-quick-start)
-- [📊 Dashboard](#-dashboard)
-- [🔐 Authentication](#-authentication)
-- [📚 API Documentation](#-api-documentation)
-- [🛠️ Tech Stack](#️-tech-stack)
-- [📁 Project Structure](#-project-structure)
-- [🧪 Testing](#-testing)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
+## Table of Contents
 
-## ✨ Key Features
+- [Key Features](#key-features)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Dashboard](#dashboard)
+- [Authentication](#authentication)
+- [API Documentation](#api-documentation)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Testing](#testing)
+- [Contributing](#contributing)
+- [License](#license)
 
-### 🎯 Real-time Event Processing
+---
+
+## Key Features
+
+### Real-time Event Processing
 - Collect events from Smart TV/OTT platforms (play, pause, seek, errors, etc.)
 - High-performance event streaming with async queue-based processing
 - Persistence guaranteed through SQLite database
 
-### 🔍 Advanced Compliance Risk Detection
+### Advanced Compliance Risk Detection
 - **GDPR/CCPA Compliance**: EU user consent status and California region processing
 - **Time-window Based Analysis**: Multi-region access and high-frequency activity detection within 1 hour
 - **ML-based Anomaly Detection**: Statistical anomaly detection using scikit-learn
 - **Subscription Plan Impact**: Risk adjustment based on premium/basic user plans
 
-### 📈 Real-time Monitoring
+### Real-time Monitoring
 - Interactive dashboard based on Chart.js
 - Risk level distribution charts (low/medium/high)
 - Real-time metric updates (every 5 seconds)
 
-### 🔐 Secure Authentication
+### Secure Authentication
 - JWT-based authentication system
 - Role-based access control (admin/analyst)
 - Secure password hashing (PBKDF2)
 
-## 🏗️ Architecture
+---
+
+## Architecture
 
 ```
 Smart TV Client ──► [Ingest API] ──► [Queue] ──► [Consumer Service]
@@ -72,7 +78,9 @@ Smart TV Client ──► [Ingest API] ──► [Queue] ──► [Consumer Ser
 - **Database**: SQLite-based data persistence
 - **Dashboard**: Real-time web interface
 
-## 🚀 Quick Start
+---
+
+## Quick Start
 
 ### Prerequisites
 
@@ -82,18 +90,18 @@ Smart TV Client ──► [Ingest API] ──► [Queue] ──► [Consumer Ser
 ### Installation
 
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone https://github.com/deokhwajeong/ott-compliance-events-pipeline.git
 cd ott-compliance-events-pipeline
 
-# 2. Create virtual environment (optional)
+# Create virtual environment (optional)
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# 3. Install dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# 4. Run the server
+# Run the server
 uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -104,7 +112,9 @@ uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8000
 python src/scripts/generate_fake_events.py --events 1000 --concurrency 10
 ```
 
-## 📊 Dashboard
+---
+
+## Dashboard
 
 Access the real-time dashboard at `http://localhost:8000` in your web browser.
 
@@ -114,7 +124,9 @@ Access the real-time dashboard at `http://localhost:8000` in your web browser.
 - **Recent Results**: List of recently processed events
 - **Admin Features**: Event processing control after login
 
-## 🔐 Authentication
+---
+
+## Authentication
 
 Admin endpoints require JWT token-based authentication.
 
@@ -122,8 +134,8 @@ Admin endpoints require JWT token-based authentication.
 
 | Username | Password | Role |
 |----------|----------|------|
-| `admin` | `admin123` | Admin |
-| `analyst` | `analyst123` | Analyst |
+| admin | admin123 | Admin |
+| analyst | analyst123 | Analyst |
 
 ### Login Method
 
@@ -148,26 +160,28 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
   http://localhost:8000/compliance/summary
 ```
 
-## 📚 API Documentation
+---
+
+## API Documentation
 
 ### Public Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/` | Web dashboard |
-| `GET` | `/api` | Health check |
-| `POST` | `/events` | Event collection |
-| `POST` | `/token` | JWT token issuance |
+| GET | / | Web dashboard |
+| GET | /api | Health check |
+| POST | /events | Event collection |
+| POST | /token | JWT token issuance |
 
-### Protected Endpoints (Authentication Required)
+### Protected Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/process/one` | Process single event |
-| `POST` | `/process/drain` | Process all pending events |
-| `GET` | `/stats/summary` | Processing statistics summary |
-| `GET` | `/results/latest` | Latest processing results |
-| `GET` | `/compliance/summary` | Risk level summary |
+| POST | /process/one | Process single event |
+| POST | /process/drain | Process all pending events |
+| GET | /stats/summary | Processing statistics summary |
+| GET | /results/latest | Latest processing results |
+| GET | /compliance/summary | Risk level summary |
 
 ### Event Model
 
@@ -192,7 +206,9 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 }
 ```
 
-## 🛠️ Tech Stack
+---
+
+## Tech Stack
 
 ### Backend
 - **Python 3.12+**: Main programming language
@@ -215,7 +231,9 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 - **Alembic**: Database migrations
 - **Uvicorn**: ASGI server
 
-## 📁 Project Structure
+---
+
+## Project Structure
 
 ```
 ott-compliance-events-pipeline/
@@ -241,7 +259,9 @@ ott-compliance-events-pipeline/
 └── LICENSE                     # MIT License
 ```
 
-## 🧪 Testing
+---
+
+## Testing
 
 ```bash
 # Run all tests
@@ -254,7 +274,9 @@ pytest tests/ -v
 pytest tests/test_app.py::test_event_schema -v
 ```
 
-## 🤝 Contributing
+---
+
+## Contributing
 
 Contributions are welcome! Please report issues or submit pull requests.
 
@@ -264,7 +286,9 @@ Contributions are welcome! Please report issues or submit pull requests.
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📄 License
+---
+
+## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 

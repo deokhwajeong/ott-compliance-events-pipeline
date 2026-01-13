@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kafka 통합 테스트 스크립트"""
+"""Kafka Integration Test Script"""
 
 import asyncio
 import sys
@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-# 경로 설정
+# Path configuration
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
 from app.queue import Event, ComplianceEventQueue
@@ -17,15 +17,15 @@ from app.kafka_manager import kafka_manager
 
 async def main():
     print("=" * 60)
-    print("OTT Compliance Pipeline - Kafka 통합 테스트")
+    print("OTT Compliance Pipeline - Kafka Integration Test")
     print("=" * 60)
     
-    # Kafka 프로듀서 초기화
+    # Kafka Producer initialization
     await kafka_manager.init_producer()
-    print(f"✓ Kafka Producer 초기화 완료 (Brokers: {kafka_settings.bootstrap_servers})")
-    print(f"✓ 토픽 설정: {kafka_settings.topics}")
+    print(f"✓ Kafka Producer initialized (Brokers: {kafka_settings.bootstrap_servers})")
+    print(f"✓ Topics: {kafka_settings.topics}")
     
-    # 테스트 이벤트 생성
+    # Create test events
     queue = ComplianceEventQueue(use_kafka=True)
     
     test_events = [
@@ -52,15 +52,15 @@ async def main():
         ),
     ]
     
-    # 이벤트 발행
-    print("\n[이벤트 발행]")
+    # Event publishing
+    print("\n[Event Publishing]")
     for event in test_events:
         success = await queue.enqueue_event(event)
         status = "✓" if success else "✗"
         print(f"{status} {event.event_type.upper():10} | User: {event.user_id:10} | Device: {event.device_id}")
     
-    # 이상 탐지 시뮬레이션
-    print("\n[이상 탐지 알림]")
+    # Anomaly detection simulation
+    print("\n[Anomaly Detection Alert]")
     anomaly = {
         "user_id": "user_123",
         "anomaly_type": "unusual_activity",
@@ -68,10 +68,10 @@ async def main():
         "timestamp": datetime.utcnow().isoformat()
     }
     await queue.enqueue_anomaly(anomaly)
-    print(f"✓ 이상 탐지 발행됨 (Risk Score: {anomaly['risk_score']})")
+    print(f"✓ Anomaly published (Risk Score: {anomaly['risk_score']})")
     
-    # 규정 위반 기록
-    print("\n[GDPR 규정 위반]")
+    # Compliance violation record
+    print("\n[GDPR Compliance Violation]")
     violation = {
         "user_id": "user_456",
         "violation_type": "excessive_data_retention",
@@ -79,10 +79,10 @@ async def main():
         "timestamp": datetime.utcnow().isoformat()
     }
     await queue.enqueue_compliance_violation(violation)
-    print(f"✓ 규정 위반 기록됨 (Severity: {violation['severity']})")
+    print(f"✓ Compliance violation recorded (Severity: {violation['severity']})")
     
-    # 감시 로그
-    print("\n[감시 로그]")
+    # Audit log
+    print("\n[Audit Log]")
     audit = {
         "action": "data_export",
         "actor": "admin_001",
@@ -90,13 +90,13 @@ async def main():
         "timestamp": datetime.utcnow().isoformat()
     }
     await queue.enqueue_audit_log(audit)
-    print(f"✓ 감시 로그 기록됨 (Action: {audit['action']})")
+    print(f"✓ Audit log recorded (Action: {audit['action']})")
     
-    # 정리
+    # Cleanup
     await kafka_manager.close()
     
     print("\n" + "=" * 60)
-    print("✓ 테스트 완료!")
+    print("✓ Test completed!")
     print(f"  Kafka UI: http://localhost:8080")
     print("=" * 60)
 

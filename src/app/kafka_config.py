@@ -3,7 +3,7 @@ from typing import Optional
 
 
 class KafkaSettings(BaseSettings):
-    """Kafka 구성 설정"""
+    """Kafka Configuration Settings"""
     bootstrap_servers: list[str] = ["localhost:9092"]
     topics: dict[str, str] = {
         "events": "ott-events",

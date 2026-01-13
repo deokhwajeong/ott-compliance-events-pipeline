@@ -80,7 +80,7 @@ async def ingest_event(event: Event, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_event)
     
-    # 메트릭 기록
+    # Record metrics
     MetricsRecorder.record_event(event.event_type, event.user_id)
     
     enqueue_event(event.model_dump())
@@ -190,12 +190,12 @@ async def compliance_summary(db: Session = Depends(get_db), current_user: User =
 
 
 # ========================
-# Prometheus 메트릭 엔드포인트
+# Prometheus Metrics Endpoint
 # ========================
 
 @app.get("/metrics")
 async def metrics():
-    """Prometheus 메트릭 엔드포인트"""
+    """Prometheus metrics endpoint"""
     return StreamingResponse(
         generate_latest(),
         media_type=CONTENT_TYPE_LATEST
@@ -203,7 +203,7 @@ async def metrics():
 
 
 # ========================
-# 감시 로그 엔드포인트
+# Audit Log Endpoints
 # ========================
 
 @app.post("/api/v1/audit/log")
@@ -214,7 +214,7 @@ async def log_audit(
     details: dict = None,
     current_user: User = Depends(get_current_active_user)
 ):
-    """감시 로그 기록"""
+    """Record audit log"""
     try:
         audit_log = audit_logger.log(
             action=AuditAction[action.upper()],
@@ -229,7 +229,7 @@ async def log_audit(
             "action": audit_log.action
         }
     except Exception as e:
-        logger.error(f"감시 로그 기록 실패: {e}")
+        logger.error(f"Failed to record audit log: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -239,7 +239,7 @@ async def log_data_access(
     resource: str,
     current_user: User = Depends(get_current_active_user)
 ):
-    """데이터 접근 로그"""
+    """Log data access"""
     audit_logger.log_data_access(
         actor_id=current_user.username,
         target_user_id=target_user_id,
@@ -254,7 +254,7 @@ async def log_data_export(
     export_format: str = "json",
     current_user: User = Depends(get_current_active_user)
 ):
-    """데이터 내보내기 로그"""
+    """Log data export"""
     audit_logger.log_data_export(
         actor_id=current_user.username,
         target_user_id=target_user_id,
@@ -269,7 +269,7 @@ async def log_data_delete(
     reason: str,
     current_user: User = Depends(get_current_active_user)
 ):
-    """데이터 삭제 로그"""
+    """Log data deletion"""
     audit_logger.log_data_delete(
         actor_id=current_user.username,
         target_user_id=target_user_id,
@@ -279,46 +279,46 @@ async def log_data_delete(
 
 
 # ========================
-# 규정 준수 리포트 엔드포인트
+# Compliance Report Endpoints
 # ========================
 
 @app.get("/api/v1/reports/daily")
 async def get_daily_report(current_user: User = Depends(get_current_active_user)):
-    """일일 규정 준수 리포트"""
+    """Daily compliance report"""
     report = report_generator.generate_daily_report()
     return report.to_dict()
 
 
 @app.get("/api/v1/reports/daily/html")
 async def get_daily_report_html(current_user: User = Depends(get_current_active_user)):
-    """일일 규정 준수 리포트 (HTML)"""
+    """Daily compliance report (HTML)"""
     report = report_generator.generate_daily_report()
     return HTMLResponse(content=report.to_html())
 
 
 @app.get("/api/v1/reports/weekly")
 async def get_weekly_report(current_user: User = Depends(get_current_active_user)):
-    """주간 규정 준수 리포트"""
+    """Weekly compliance report"""
     report = report_generator.generate_weekly_report()
     return report.to_dict()
 
 
 @app.get("/api/v1/reports/weekly/html")
 async def get_weekly_report_html(current_user: User = Depends(get_current_active_user)):
-    """주간 규정 준수 리포트 (HTML)"""
+    """Weekly compliance report (HTML)"""
     report = report_generator.generate_weekly_report()
     return HTMLResponse(content=report.to_html())
 
 
 @app.get("/api/v1/reports/monthly")
 async def get_monthly_report(current_user: User = Depends(get_current_active_user)):
-    """월간 규정 준수 리포트"""
+    """Monthly compliance report"""
     report = report_generator.generate_monthly_report()
     return report.to_dict()
 
 
 @app.get("/api/v1/reports/monthly/html")
 async def get_monthly_report_html(current_user: User = Depends(get_current_active_user)):
-    """월간 규정 준수 리포트 (HTML)"""
+    """Monthly compliance report (HTML)"""
     report = report_generator.generate_monthly_report()
     return HTMLResponse(content=report.to_html())
