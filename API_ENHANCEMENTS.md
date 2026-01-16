@@ -1,41 +1,41 @@
-# OTT Compliance Pipeline - 고도화 API 문서
+# OTT Compliance Pipeline - API Enhancement Documentation
 
-## 📋 개요
+## 📋 Overview
 
-최신 성능 최적화, 고급 ML 기능, 보안 강화가 적용된 통합 API 레퍼런스입니다.
-
----
-
-## 🔒 보안 & 검증
-
-### 모든 엔드포인트에 적용된 보안 기능
-
-1. **입력 데이터 검증**
-   - SQL Injection 탐지
-   - XSS 공격 탐지
-   - Path Traversal 공격 탐지
-   - IP 주소 형식 검증
-   - Timestamp ISO 형식 검증
-
-2. **속도 제한 (Rate Limiting)**
-   - 기본: 시간당 10,000 요청 제한
-   - 클라이언트별 추적
-
-3. **데이터 Sanitization**
-   - HTML 이스케이핑
-   - Null 바이트 제거
-   - 메타데이터 JSON 검증
+Comprehensive API reference with latest performance optimizations, advanced ML features, and security enhancements.
 
 ---
 
-## 🎯 핵심 엔드포인트
+## 🔒 Security & Validation
 
-### 이벤트 수집
+### Security Features Applied to All Endpoints
+
+1. **Input Data Validation**
+   - SQL Injection Detection
+   - XSS Attack Detection
+   - Path Traversal Attack Detection
+   - IP Address Format Validation
+   - Timestamp ISO Format Validation
+
+2. **Rate Limiting**
+   - Default: 10,000 requests per hour
+   - Per-client tracking
+
+3. **Data Sanitization**
+   - HTML Escaping
+   - Null-byte Removal
+   - Metadata JSON Validation
+
+---
+
+## 🎯 Core Endpoints
+
+### Event Collection
 
 #### POST /events
-이벤트를 수집합니다 (보안 검증 포함).
+Collect events with built-in security validation.
 
-**요청:**
+**Request:**
 ```json
 {
   "event_id": "evt_001",
@@ -54,7 +54,7 @@
 }
 ```
 
-**응답:**
+**Response:**
 ```json
 {
   "status": "queued",
@@ -62,19 +62,19 @@
 }
 ```
 
-**오류 처리:**
-- 422: 유효성 검사 실패
-- 429: 속도 제한 초과
-- 400: 보안 검증 실패 (SQL Injection, XSS 등)
+**Error Handling:**
+- 422: Validation failure
+- 429: Rate limit exceeded
+- 400: Security validation failure (SQL Injection, XSS, etc.)
 
 ---
 
-## 📊 분석 & 리포팅
+## 📊 Analytics & Reporting
 
 ### GET /api/v1/reports/executive-summary
-경영진용 요약 리포트
+Executive summary report.
 
-**응답:**
+**Response:**
 ```json
 {
   "report_type": "executive_summary",
@@ -96,19 +96,19 @@
 ```
 
 ### GET /api/v1/reports/compliance?days=7
-상세 준수 리포트
+Detailed compliance report.
 
-**파라미터:**
-- `days`: 분석 기간 (기본값: 7)
+**Parameters:**
+- `days`: Analysis period (default: 7)
 
-**응답:**
+**Response:**
 ```json
 {
   "report_type": "compliance_report",
   "period_days": 7,
   "summary": { /* ... */ },
   "trends": {
-    "2025-01-16": {
+    "2026-01-16": {
       "total": 500,
       "violations": 8,
       "risk_score_avg": 3.2
@@ -122,9 +122,9 @@
 ```
 
 ### GET /api/v1/analytics/risk-distribution
-위험 수준 분포
+Risk level distribution.
 
-**응답:**
+**Response:**
 ```json
 {
   "risk_distribution": {
@@ -139,9 +139,9 @@
 ```
 
 ### GET /api/v1/analytics/top-risk-factors?limit=10
-상위 위험 요소
+Top risk factors.
 
-**응답:**
+**Response:**
 ```json
 {
   "top_risk_factors": [
@@ -154,9 +154,9 @@
 ```
 
 ### GET /api/v1/analytics/geographic-distribution
-지역별 이벤트 분포
+Event distribution by region.
 
-**응답:**
+**Response:**
 ```json
 {
   "geographic_distribution": {
@@ -173,12 +173,12 @@
 
 ---
 
-## 🤖 ML & 예측
+## 🤖 ML & Prediction
 
 ### GET /api/v1/analytics/ml-models/status
-ML 모델 상태
+ML model health status.
 
-**응답:**
+**Response:**
 ```json
 {
   "anomaly_detector": {
@@ -200,9 +200,9 @@ ML 모델 상태
 ```
 
 ### GET /api/v1/analytics/user-risk/{user_id}
-사용자 위험 프로필
+User-specific risk profile.
 
-**응답:**
+**Response:**
 ```json
 {
   "user_id": "user_123",
@@ -226,9 +226,9 @@ ML 모델 상태
 ```
 
 ### POST /api/v1/analytics/ml-models/retrain?force=false
-ML 모델 재학습 (수동)
+Manually trigger ML model retraining.
 
-**응답:**
+**Response:**
 ```json
 {
   "status": "retraining_initiated",
@@ -243,12 +243,12 @@ ML 모델 재학습 (수동)
 
 ---
 
-## 💾 캐시 관리
+## 💾 Cache Management
 
 ### GET /api/v1/analytics/cache/stats
-캐시 통계
+Cache statistics.
 
-**응답:**
+**Response:**
 ```json
 {
   "cache": {
@@ -269,12 +269,12 @@ ML 모델 재학습 (수동)
 ```
 
 ### POST /api/v1/cache/clear?pattern=*
-캐시 초기화 (관리자 전용)
+Clear cache by pattern (Admin only).
 
-**파라미터:**
-- `pattern`: 키 패턴 (예: `user:*`, `*:profile`)
+**Parameters:**
+- `pattern`: Key pattern (e.g., `user:*`, `*:profile`)
 
-**응답:**
+**Response:**
 ```json
 {
   "status": "cleared",
@@ -286,12 +286,12 @@ ML 모델 재학습 (수동)
 
 ---
 
-## 🔍 모니터링 & 메트릭
+## 🔍 Monitoring & Metrics
 
 ### GET /api/v1/analytics/performance-metrics
-성능 메트릭
+Performance metrics.
 
-**응답:**
+**Response:**
 ```json
 {
   "timestamp": "2025-01-16T10:30:00Z",
@@ -304,9 +304,9 @@ ML 모델 재학습 (수동)
 ```
 
 ### GET /api/v1/analytics/ml-model-performance
-ML 모델 성능
+ML model performance report.
 
-**응답:**
+**Response:**
 ```json
 {
   "report_type": "ml_performance",
@@ -322,9 +322,9 @@ ML 모델 성능
 ```
 
 ### GET /api/v1/processing/stats
-이벤트 처리 통계
+Event processing statistics.
 
-**응답:**
+**Response:**
 ```json
 {
   "stats": {
@@ -344,12 +344,12 @@ ML 모델 성능
 
 ---
 
-## 🔐 보안
+## 🔐 Security
 
 ### GET /api/v1/security/validation-status
-보안 검증 상태
+Security validator status.
 
-**응답:**
+**Response:**
 ```json
 {
   "security_validator": {
@@ -368,38 +368,38 @@ ML 모델 성능
 
 ---
 
-## 📈 고도화 메트릭
+## 📈 Enhancement Metrics
 
-### 성능 개선
+### Performance Improvements
 
-| 항목 | 개선 사항 |
+| Item | Improvement |
 |------|---------|
-| 캐시 히트율 | +40% (SCAN 기반 패턴 정리) |
-| DB 풀링 | 20-40 병렬 연결 지원 |
-| 배치 작업 | mget/mset으로 단일 왕복 |
-| ML 정확도 | 3가지 위험요소 추가로 +8% |
+| Cache Hit Rate | +40% (SCAN-based pattern matching) |
+| DB Pooling | 20-40 parallel connections support |
+| Batch Operations | Single round-trip with mget/mset |
+| ML Accuracy | +8% with additional 3 risk factors |
 
-### 보안 강화
+### Security Enhancements
 
-- 8가지 SQL Injection 패턴 감지
-- 6가지 XSS 공격 패턴 감지
-- IPv4/IPv6 형식 검증
-- 이벤트별 3-레벨 보안 검증
+- 8 SQL Injection pattern detection
+- 6 XSS attack pattern detection
+- IPv4/IPv6 format validation
+- 3-level security validation per event
 
-### 모니터링
+### Monitoring
 
-- 실시간 처리 통계 (에러율, 평균 시간)
-- ML 모델 정확도 추적
-- 캐시 메모리 사용량 모니터링
-- 지역별/사용자별 위험 분포
+- Real-time processing statistics (error rate, average time)
+- ML model accuracy tracking
+- Cache memory usage monitoring
+- Geographic/user-specific risk distribution
 
 ---
 
-## 🚀 성능 최적화 팁
+## 🚀 Performance Optimization Tips
 
-1. **배치 작업 활용**
+1. **Use Batch Operations**
    ```python
-   # mset으로 여러 키를 한 번에 설정
+   # Set multiple keys in single operation
    cache_manager.mset({
        "user:001:profile": {...},
        "user:001:events": [...],
@@ -407,44 +407,44 @@ ML 모델 성능
    })
    ```
 
-2. **패턴 기반 캐시 초기화**
+2. **Pattern-Based Cache Clearing**
    ```
    POST /api/v1/cache/clear?pattern=user:inactive:*
    ```
 
-3. **ML 모델 강제 재학습**
+3. **Force ML Model Retraining**
    ```
    POST /api/v1/analytics/ml-models/retrain?force=true
    ```
 
-4. **사용자별 위험 프로필 조회**
+4. **Query User Risk Profile**
    ```
    GET /api/v1/analytics/user-risk/user_123
    ```
 
 ---
 
-## 🔧 문제 해결
+## 🔧 Troubleshooting
 
-### 캐시 연결 실패
-- Redis 서버 상태 확인
-- `GET /api/v1/analytics/cache/stats`로 상태 확인
-- 자동으로 인메모리 폴백 작동
+### Cache Connection Failure
+- Check Redis server status
+- Verify connection with `GET /api/v1/analytics/cache/stats`
+- System automatically falls back to in-memory cache
 
-### 속도 제한 초과
-- 429 응답 받으면 요청 간격 증가
-- `/api/v1/security/validation-status`에서 활성 키 확인
+### Rate Limit Exceeded
+- If receiving 429 response, increase request interval
+- Check active keys from `/api/v1/security/validation-status`
 
-### ML 모델 성능 저하
-- `/api/v1/analytics/ml-models/retrain?force=true`로 재학습
-- 샘플 크기 확인: `feature_history_size` >= 100 필요
+### ML Model Performance Degradation
+- Retrain with `/api/v1/analytics/ml-models/retrain?force=true`
+- Verify sample size: `feature_history_size` >= 100 required
 
 ---
 
-## 📞 지원
+## 📞 Support
 
-문제가 발생하면:
-1. 에러 메시지 기록
-2. 관련 메트릭 확인 (`GET /metrics`)
-3. 관리자에게 보고
+For issues:
+1. Record error message
+2. Check related metrics (`GET /metrics`)
+3. Contact administrators
 

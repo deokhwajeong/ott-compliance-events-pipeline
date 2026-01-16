@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 🎯 OTT Compliance Pipeline - Interactive Demo
-샘플 데이터로 직접 구동해보는 대화형 데모
+Try the ML compliance system directly with sample data
 """
 
 import sys
@@ -14,7 +14,7 @@ from datetime import datetime
 from typing import Dict, Any
 from pprint import pprint
 
-# 모듈 임포트
+# Module imports
 from app.geoip_validator import geoip_validator
 from app.ml_models import anomaly_detector, violation_predictor
 from app.adaptive_thresholds import adaptive_thresholds
@@ -26,7 +26,7 @@ from app.cache import cache_manager
 
 
 def print_header(title: str, level: int = 1):
-    """타이틀 출력"""
+    """Print formatted header"""
     symbols = ["🔴", "🟠", "🟡", "🟢", "🔵"][level - 1]
     print(f"\n{'='*70}")
     print(f"{symbols} {title}")
@@ -34,45 +34,45 @@ def print_header(title: str, level: int = 1):
 
 
 def demo_1_geoip():
-    """데모 1: GeoIP 검증"""
-    print_header("1️⃣  GeoIP 검증 - IP 주소 지역 검증", 1)
+    """Demo 1: GeoIP Validation"""
+    print_header("1️⃣  GeoIP Validation - IP Address Region Check", 1)
     
     test_ips = [
-        {"ip": "8.8.8.8", "claimed_region": "US", "description": "Google DNS (미국)"},
-        {"ip": "1.1.1.1", "claimed_region": "AU", "description": "Cloudflare DNS (호주로 주장)"},
-        {"ip": "185.220.101.1", "claimed_region": "US", "description": "Tor 노드 (미국으로 주장)"},
+        {"ip": "8.8.8.8", "claimed_region": "US", "description": "Google DNS (USA)"},
+        {"ip": "1.1.1.1", "claimed_region": "AU", "description": "Cloudflare DNS (claims Australia)"},
+        {"ip": "185.220.101.1", "claimed_region": "US", "description": "Tor Node (claims USA)"},
     ]
     
-    print("📍 샘플 IP 검증:\\n")
+    print("📍 Sample IP Validation:\n")
     results = []
     for test in test_ips:
         print(f"  {test['description']}")
-        print(f"    IP: {test['ip']}, 주장 지역: {test['claimed_region']}")
+        print(f"    IP: {test['ip']}, Claimed Region: {test['claimed_region']}")
         
         result = geoip_validator.validate_ip_region_consistency(test["ip"], test["claimed_region"])
         
-        print(f"    ✓ 플래그: {result['flags'] if result['flags'] else '없음'}")
-        print(f"    ✓ 점수 조정: +{result['score_adjustment']}")
-        print(f"    ✓ VPN: {'감지됨' if result['vpn_info']['is_vpn'] else '없음'}\n")
+        print(f"    ✓ Flags: {result['flags'] if result['flags'] else 'None'}")
+        print(f"    ✓ Score Adjustment: +{result['score_adjustment']}")
+        print(f"    ✓ VPN: {'Detected' if result['vpn_info']['is_vpn'] else 'None'}\n")
         
         results.append({
-            "설명": test["description"],
-            "위험도": "높음" if result['score_adjustment'] > 0 else "낮음",
-            "점수": result['score_adjustment']
+            "Description": test["description"],
+            "Risk Level": "High" if result['score_adjustment'] > 0 else "Low",
+            "Score": result['score_adjustment']
         })
     
-    print("📊 결과 요약:")
+    print("📊 Results Summary:")
     print(pd.DataFrame(results).to_string(index=False))
     return results
 
 
 def demo_2_ml_detection():
-    """데모 2: ML 이상 탐지"""
-    print_header("2️⃣  ML 이상 탐지 - Isolation Forest + LOF 앙상블", 1)
+    """Demo 2: ML Anomaly Detection"""
+    print_header("2️⃣  ML Anomaly Detection - Isolation Forest + LOF Ensemble", 1)
     
     sample_events = [
         {
-            "name": "✅ 정상 이벤트 (업무 시간)",
+            "name": "✅ Normal Event (Business Hours)",
             "features": {
                 "hour": 14, "weekday": 2, "event_type_len": 5, "has_error": 0,
                 "is_eu": 0, "has_consent": 1, "subscription_tier": 2,
@@ -80,7 +80,7 @@ def demo_2_ml_detection():
             }
         },
         {
-            "name": "⚠️  의심 이벤트 (야간 대량 접근)",
+            "name": "⚠️  Suspicious Event (Night Bulk Access)",
             "features": {
                 "hour": 3, "weekday": 4, "event_type_len": 8, "has_error": 1,
                 "is_eu": 1, "has_consent": 0, "subscription_tier": 1,
@@ -94,26 +94,26 @@ def demo_2_ml_detection():
         print(f"{event['name']}")
         result = anomaly_detector.ensemble_anomaly_detection(event['features'])
         
-        print(f"  ✓ 이상 탐지: {'🔴 YES' if result['is_anomaly'] else '🟢 NO'}")
-        print(f"  ✓ 앙상블 점수: {result['ensemble_score']:.3f}")
+        print(f"  ✓ Anomaly Detected: {'🔴 YES' if result['is_anomaly'] else '🟢 NO'}")
+        print(f"  ✓ Ensemble Score: {result['ensemble_score']:.3f}")
         print(f"  ✓ Isolation Forest: {result['isolation_forest']['score']:.3f}")
         print(f"  ✓ LOF: {result['lof']['score']:.3f}\n")
         
         ml_results.append({
-            "이벤트": event['name'].split()[0] + " " + event['name'].split()[1],
-            "이상": "YES" if result['is_anomaly'] else "NO",
-            "점수": f"{result['ensemble_score']:.3f}",
+            "Event": event['name'].split()[0] + " " + event['name'].split()[1],
+            "Anomaly": "YES" if result['is_anomaly'] else "NO",
+            "Score": f"{result['ensemble_score']:.3f}",
         })
     
-    print("📊 결과 요약:")
+    print("📊 Results Summary:")
     print(pd.DataFrame(ml_results).to_string(index=False))
-    print(f"\n📈 누적된 특징 데이터: {len(anomaly_detector.feature_history)}개")
+    print(f"\n📈 Accumulated Feature Data: {len(anomaly_detector.feature_history)} records")
     return ml_results
 
 
 def demo_3_user_segmentation():
-    """데모 3: 사용자 세그먼테이션"""
-    print_header("3️⃣  사용자 세그먼테이션 - 자동 사용자 분류", 1)
+    """Demo 3: User Segmentation"""
+    print_header("3️⃣  User Segmentation - Auto User Classification", 1)
     
     user_profiles = [
         {
@@ -143,25 +143,25 @@ def demo_3_user_segmentation():
         params = user_segmentation.get_segment_risk_parameters(segment)
         
         print(f"👤 {user_id}")
-        print(f"  ✓ 세그먼트: {segment.value}")
-        print(f"  ✓ 임계값: {params['risk_threshold_high']}")
-        print(f"  ✓ 감도: {params['anomaly_sensitivity']}x")
-        print(f"  ✓ 알림: {', '.join(params['alert_channels'])}\n")
+        print(f"  ✓ Segment: {segment.value}")
+        print(f"  ✓ Threshold: {params['risk_threshold_high']}")
+        print(f"  ✓ Sensitivity: {params['anomaly_sensitivity']}x")
+        print(f"  ✓ Alerts: {', '.join(params['alert_channels'])}\n")
         
         segment_results.append({
-            "사용자": user_id,
-            "세그먼트": segment.value,
-            "임계값": params['risk_threshold_high'],
+            "User": user_id,
+            "Segment": segment.value,
+            "Threshold": params['risk_threshold_high'],
         })
     
-    print("📊 결과 요약:")
+    print("📊 Results Summary:")
     print(pd.DataFrame(segment_results).to_string(index=False))
     return segment_results
 
 
 def demo_4_network_fraud():
-    """데모 4: 네트워크 사기 탐지"""
-    print_header("4️⃣  네트워크 분석 - 사기 링 탐지", 1)
+    """Demo 4: Network Fraud Detection"""
+    print_header("4️⃣  Network Analysis - Fraud Ring Detection", 1)
     
     fraud_network = [
         ("fraud_user_1", "device_A", "192.168.1.100", "visa_1234"),
@@ -173,50 +173,50 @@ def demo_4_network_fraud():
         ("clean_user_1", "device_B", "192.168.1.200", "visa_5678"),
     ]
     
-    print(f"📌 네트워크에 {len(fraud_network)}명의 사용자 추가 중...")
+    print(f"📌 Adding {len(fraud_network)} users to network...")
     for user_id, device_id, ip_address, payment_method in fraud_network:
         network_fraud_detector.add_user_event(
             user_id=user_id, device_id=device_id,
             ip_address=ip_address, payment_method=payment_method
         )
-    print("✅ 완료\n")
+    print("✅ Complete\n")
     
     rings = network_fraud_detector.detect_fraud_rings(min_ring_size=5)
-    print(f"🔴 {len(rings)}개의 사기 링 감지됨!\\n")
+    print(f"🔴 {len(rings)} fraud rings detected!\n")
     
     for i, ring in enumerate(rings, 1):
-        print(f"  사기 링 #{i}: {ring['ring_type']}")
-        print(f"    ✓ 규모: {len(ring['users'])}명")
-        print(f"    ✓ 위험도: {ring['risk_score']:.2f}")
-        print(f"    ✓ 관련 사용자: {', '.join(ring['users'][:3])}...\n")
+        print(f"  Fraud Ring #{i}: {ring['ring_type']}")
+        print(f"    ✓ Size: {len(ring['users'])} users")
+        print(f"    ✓ Risk Score: {ring['risk_score']:.2f}")
+        print(f"    ✓ Related Users: {', '.join(ring['users'][:3])}...\n")
     
     stats = network_fraud_detector.get_network_statistics()
-    print("📊 네트워크 통계:")
-    print(f"  ✓ 총 노드: {stats['total_nodes']}개")
-    print(f"  ✓ 사기 링: {stats['detected_fraud_rings']}개")
-    print(f"  ✓ 사기 링 내 사용자: {stats['users_in_fraud_rings']}명")
+    print("📊 Network Statistics:")
+    print(f"  ✓ Total Nodes: {stats['total_nodes']}")
+    print(f"  ✓ Fraud Rings: {stats['detected_fraud_rings']}")
+    print(f"  ✓ Users in Fraud Rings: {stats['users_in_fraud_rings']}")
     
     return rings
 
 
 def demo_5_regulations():
-    """데모 5: 다국가 규정 준수"""
-    print_header("5️⃣  다국가 규정 준수 - 컴플라이언스 확인", 1)
+    """Demo 5: Multi-Jurisdiction Compliance"""
+    print_header("5️⃣  Multi-Jurisdiction Compliance - Check Compliance", 1)
     
-    print("🌍 지역별 적용 규정:\n")
+    print("🌍 Regulations by Region:\n")
     regions = ["EU", "US", "CN", "BR"]
     for region in regions:
         regs = RegulationFramework.get_regulations_for_region(region)
-        reg_names = [r.value for r in regs] if regs else "없음"
+        reg_names = [r.value for r in regs] if regs else "None"
         print(f"  {region}: {reg_names}")
     
-    print("\n📋 GDPR 핵심 요구사항:")
+    print("\n📋 GDPR Key Requirements:")
     reqs = RegulationFramework.get_regulation_requirements(Regulation.GDPR)
-    print(f"  ✓ 동의 필수: {'예' if reqs['consent_required'] else '아니오'}")
-    print(f"  ✓ 위반 통지: {reqs['breach_notification_days']}일")
-    print(f"  ✓ 데이터 삭제권: {'예' if reqs['right_to_deletion'] else '아니오'}")
+    print(f"  ✓ Consent Required: {'Yes' if reqs['consent_required'] else 'No'}")
+    print(f"  ✓ Breach Notification: {reqs['breach_notification_days']} days")
+    print(f"  ✓ Right to Deletion: {'Yes' if reqs['right_to_deletion'] else 'No'}")
     
-    print("\n✅ 이벤트 준수 확인:")
+    print("\n✅ Event Compliance Check:")
     test_event = {
         "user_id": "user_eu_001",
         "event_type": "user_data_access",
@@ -231,21 +231,21 @@ def demo_5_regulations():
         event_details=test_event['details']
     )
     
-    print(f"  사용자: {test_event['user_id']}")
-    print(f"  상태: {'✅ 준수' if result['compliant'] else '❌ 위반'}")
-    print(f"  적용 규정: {', '.join(result['applicable_regulations'])}")
+    print(f"  User: {test_event['user_id']}")
+    print(f"  Status: {'✅ Compliant' if result['compliant'] else '❌ Violation'}")
+    print(f"  Applicable Regulations: {', '.join(result['applicable_regulations'])}")
     
     return result
 
 
 def demo_6_roi():
-    """데모 6: ROI 분석"""
-    print_header("6️⃣  ROI 분석 - 금융 임팩트", 1)
+    """Demo 6: ROI Analysis"""
+    print_header("6️⃣  ROI Analysis - Financial Impact", 1)
     
-    print("💰 시나리오: 12개월 동안 100,000명 사용자 모니터링")
-    print("   - 감지된 위반: 100개")
-    print("   - 방지된 위반: 80개")
-    print("   - 방지된 사건: 3개\n")
+    print("💰 Scenario: Monitor 100,000 users over 12 months")
+    print("   - Violations Detected: 100")
+    print("   - Violations Prevented: 80")
+    print("   - Incidents Prevented: 3\n")
     
     report = roi_calculator.generate_roi_report(
         violations_detected=100,
@@ -258,14 +258,14 @@ def demo_6_roi():
     )
     
     summary = report['financial_summary']
-    print("💵 금융 분석 결과:\n")
-    print(f"  ✓ 보호된 총 가치: ${summary['total_value_protected']:,}")
-    print(f"  ✓ 시스템 비용: ${summary['system_cost']:,}")
-    print(f"  ✓ 순 이익: ${summary['net_benefit']:,}")
+    print("💵 Financial Analysis Results:\n")
+    print(f"  ✓ Total Value Protected: ${summary['total_value_protected']:,}")
+    print(f"  ✓ System Cost: ${summary['system_cost']:,}")
+    print(f"  ✓ Net Benefit: ${summary['net_benefit']:,}")
     print(f"  ✓ ROI: {summary['roi_percent']:,.0f}%")
-    print(f"  ✓ 회수 기간: {summary['payback_period_months']:.1f}개월")
+    print(f"  ✓ Payback Period: {summary['payback_period_months']:.1f} months")
     
-    print("\n⚖️  규정별 회피된 벌금:")
+    print("\n⚖️  Fines Prevented by Regulation:")
     for reg, fine_data in report['fine_prevention'].items():
         print(f"  {reg}: ${fine_data['total_value']:,}")
     
@@ -273,22 +273,22 @@ def demo_6_roi():
 
 
 def demo_7_adaptive_thresholds():
-    """데모 7: 적응형 임계값"""
-    print_header("7️⃣  적응형 임계값 - 동적 위험 임계값", 1)
+    """Demo 7: Adaptive Thresholds"""
+    print_header("7️⃣  Adaptive Thresholds - Dynamic Risk Thresholds", 1)
     
     test_cases = [
-        {"hour": 2, "region": "EU", "segment": "new_user", "desc": "야간(2시), EU, 신규"},
-        {"hour": 14, "region": "US", "segment": "power_user", "desc": "오후(14시), US, 고급"},
+        {"hour": 2, "region": "EU", "segment": "new_user", "desc": "Night (2 AM), EU, New User"},
+        {"hour": 14, "region": "US", "segment": "power_user", "desc": "Afternoon (2 PM), US, Power User"},
     ]
     
-    print("📌 상황별 동적 임계값:\\n")
+    print("📌 Dynamic Thresholds by Situation:\n")
     for case in test_cases:
         desc = case.pop("desc")
         threshold = adaptive_thresholds.get_dynamic_risk_threshold(**case)
         print(f"  {desc}")
-        print(f"    → 임계값: {threshold:.2f}\n")
+        print(f"    → Threshold: {threshold:.2f}\n")
     
-    print("📚 이벤트 기록 및 학습:")
+    print("📚 Record Events and Learn:")
     learning_events = [
         {"risk_score": 3.0, "is_violation": False, "segment": "normal_user", "hour": 10, "region": "US"},
         {"risk_score": 7.5, "is_violation": True, "segment": "new_user", "hour": 2, "region": "EU"},
@@ -296,14 +296,14 @@ def demo_7_adaptive_thresholds():
     
     for i, event in enumerate(learning_events, 1):
         adaptive_thresholds.record_event(**event)
-        print(f"  이벤트 {i}: Risk={event['risk_score']:.1f}, Violation={'Yes' if event['is_violation'] else 'No'}")
+        print(f"  Event {i}: Risk={event['risk_score']:.1f}, Violation={'Yes' if event['is_violation'] else 'No'}")
     
-    print("\n✅ 적응형 임계값이 자동으로 학습 중입니다.")
+    print("\n✅ Adaptive thresholds are automatically learning.")
 
 
 def demo_8_integration():
-    """데모 8: 통합 분석"""
-    print_header("8️⃣  통합 분석 - 모든 모듈 협력", 1)
+    """Demo 8: Integration Analysis"""
+    print_header("8️⃣  Integration Analysis - All Modules Working Together", 1)
     
     event = {
         "event_id": "evt_20260113_001",
@@ -314,56 +314,56 @@ def demo_8_integration():
         "event_type": "bulk_export",
     }
     
-    print("📥 이벤트 수신:\n")
+    print("📥 Event Received:\n")
     print(f"  Event ID: {event['event_id']}")
     print(f"  User: {event['user_id']}")
     print(f"  Type: {event['event_type']}\n")
     
-    print("🔍 분석 단계별 처리:\n")
+    print("🔍 Analysis Stages:\n")
     
     # 1. GeoIP
-    print("1️⃣  GeoIP 검증")
+    print("1️⃣  GeoIP Validation")
     geoip_result = geoip_validator.validate_ip_region_consistency(
         event['ip_address'], event['region']
     )
-    print(f"   IP 일치: {'✅ YES' if not geoip_result['flags'] else '❌ NO'}")
+    print(f"   IP Match: {'✅ YES' if not geoip_result['flags'] else '❌ NO'}")
     
     # 2. ML
-    print("\n2️⃣  ML 이상 탐지")
+    print("\n2️⃣  ML Anomaly Detection")
     ml_features = {
         "hour": 22, "weekday": 4, "event_type_len": 11,
         "has_error": 1, "is_eu": 1, "has_consent": 0,
         "subscription_tier": 1, "device_id": 999, "region_code": 75,
     }
     ml_result = anomaly_detector.ensemble_anomaly_detection(ml_features)
-    print(f"   이상: {'⚠️  YES' if ml_result['is_anomaly'] else '✅ NO'}")
-    print(f"   점수: {ml_result['ensemble_score']:.3f}")
+    print(f"   Anomaly: {'⚠️  YES' if ml_result['is_anomaly'] else '✅ NO'}")
+    print(f"   Score: {ml_result['ensemble_score']:.3f}")
     
     # 3. Segment
-    print("\n3️⃣  사용자 세그먼트")
+    print("\n3️⃣  User Segment")
     segment = user_segmentation.get_user_segment(event['user_id'])
-    print(f"   세그먼트: {segment.value}")
+    print(f"   Segment: {segment.value}")
     
     # 4. Network
-    print("\n4️⃣  네트워크 분석")
+    print("\n4️⃣  Network Analysis")
     network_fraud_detector.add_user_event(
         user_id=event['user_id'], device_id=event['device_id'],
         ip_address=event['ip_address']
     )
     network_risk = network_fraud_detector.get_user_network_risk(event['user_id'])
-    print(f"   위험도: {network_risk['risk_score']:.2f}")
+    print(f"   Risk: {network_risk['risk_score']:.2f}")
     
     # 5. Regulations
-    print("\n5️⃣  규정 준수")
+    print("\n5️⃣  Compliance Check")
     compliance = compliance_checker.evaluate_event_compliance(
         user_id=event['user_id'], event_type=event['event_type'],
         region=event['region'], event_details={"has_explicit_consent": False}
     )
-    print(f"   준수: {'✅ YES' if compliance['compliant'] else '❌ NO'}")
+    print(f"   Compliant: {'✅ YES' if compliance['compliant'] else '❌ NO'}")
     
-    # 최종 점수
+    # Final Score
     print("\n" + "="*70)
-    print("📊 최종 위험 평가\n")
+    print("📊 Final Risk Assessment\n")
     
     final_score = (
         5 + geoip_result['score_adjustment'] +
@@ -373,66 +373,66 @@ def demo_8_integration():
     )
     
     risk_level = "🔴 HIGH" if final_score >= 8 else "🟡 MEDIUM" if final_score >= 5 else "🟢 LOW"
-    action = "⏸️  차단" if final_score >= 8 else "📋 모니터링" if final_score >= 5 else "✅ 승인"
+    action = "⏸️  Block" if final_score >= 8 else "📋 Monitor" if final_score >= 5 else "✅ Approve"
     
-    print(f"최종 점수: {final_score:.2f}")
-    print(f"위험 수준: {risk_level}")
-    print(f"권장 조치: {action}")
+    print(f"Final Score: {final_score:.2f}")
+    print(f"Risk Level: {risk_level}")
+    print(f"Recommended Action: {action}")
 
 
 def main():
-    """메인 함수"""
+    """Main function"""
     print("\n" + "="*70)
     print("🎯 OTT Compliance Pipeline - Interactive Demo")
     print("="*70)
-    print("\n샘플 데이터로 머신러닝 컴플라이언스 시스템을 직접 체험해보세요!\n")
+    print("\nExperience the ML compliance system directly with sample data!\n")
     
     demos = [
-        ("GeoIP 검증", demo_1_geoip),
-        ("ML 이상 탐지", demo_2_ml_detection),
-        ("사용자 세그먼테이션", demo_3_user_segmentation),
-        ("네트워크 사기 탐지", demo_4_network_fraud),
-        ("다국가 규정 준수", demo_5_regulations),
-        ("ROI 분석", demo_6_roi),
-        ("적응형 임계값", demo_7_adaptive_thresholds),
-        ("통합 분석", demo_8_integration),
+        ("GeoIP Validation", demo_1_geoip),
+        ("ML Anomaly Detection", demo_2_ml_detection),
+        ("User Segmentation", demo_3_user_segmentation),
+        ("Network Fraud Detection", demo_4_network_fraud),
+        ("Multi-Jurisdiction Compliance", demo_5_regulations),
+        ("ROI Analysis", demo_6_roi),
+        ("Adaptive Thresholds", demo_7_adaptive_thresholds),
+        ("Integration Analysis", demo_8_integration),
     ]
     
-    print("📋 실행 가능한 데모:\n")
+    print("📋 Available Demos:\n")
     for i, (name, _) in enumerate(demos, 1):
         print(f"  {i}. {name}")
     
     print("\n" + "="*70)
-    print("💡 모든 데모 실행\n")
+    print("💡 Running All Demos\n")
     
     for name, demo_func in demos:
         try:
             demo_func()
-            input(f"\n⏸️  {name} 완료! (엔터를 눌러 계속...)")
+            input(f"\n⏸️  {name} Complete! (Press Enter to continue...)")
         except Exception as e:
-            print(f"\n❌ 오류 발생: {e}")
+            print(f"\n❌ Error: {e}")
             continue
     
     print("\n" + "="*70)
-    print("🎉 모든 데모 완료!")
+    print("🎉 All Demos Complete!")
     print("="*70)
     print("""
-✅ 10개 모듈 체험 완료:
-  ✓ GeoIP Validator (IP/지역 검증)
+✅ Experienced 10 Modules:
+  ✓ GeoIP Validator (IP/Region validation)
   ✓ ML Models (Isolation Forest + LOF)
-  ✓ User Segmentation (6가지 분류)
-  ✓ Network Fraud Detection (사기 링)
-  ✓ Regulations (10개 규정)
-  ✓ ROI Calculator (금융 분석)
-  ✓ Adaptive Thresholds (동적 임계값)
-  ✓ Cache Manager (Redis 캐싱)
-  ✓ Alerting System (다채널 알림)
-  ✓ Model Scheduler (자동 학습)
+  ✓ User Segmentation (6 Classifications)
+  ✓ Network Fraud Detection (Fraud rings)
+  ✓ Regulations (10+ Regulatory frameworks)
+  ✓ ROI Calculator (Financial analysis)
+  ✓ Adaptive Thresholds (Dynamic thresholds)
+  ✓ Cache Manager (Redis caching)
+  ✓ Alerting System (Multi-channel alerts)
+  ✓ Model Scheduler (Automatic training)
 
-📚 다음 단계:
-  1. FastAPI 서버 실행: python -m uvicorn src.app.main:app --reload
-  2. API 문서: http://localhost:8000/docs
-  3. 실제 데이터로 테스트하기
+📚 Next Steps:
+  1. Run FastAPI server: python -m uvicorn src.app.main:app --reload
+  2. API docs: http://localhost:8000/docs
+  3. Test with real data
     """)
 
 
