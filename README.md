@@ -885,132 +885,79 @@ Testing end-to-end event processing...
 
 ### Demo Output Example
 
+**Actual Terminal Output from `python interactive_demo.py`:**
+
 ```
-╔════════════════════════════════════════════════════════════════╗
-║       OTT COMPLIANCE PIPELINE - INTERACTIVE DEMO               ║
-║              Comprehensive Feature Showcase                    ║
-╚════════════════════════════════════════════════════════════════╝
+Could not connect to Redis: Error 111 connecting to localhost:6379. Connection refused.. Using in-memory fallback.
+================================================================
+🎯 OTT Compliance Pipeline - Interactive Demo
+================================================================
 
-🚀 Initializing system...
-   ✅ Database connection established
-   ✅ ML models loaded (94.2% avg accuracy)
-   ✅ Compliance rules engine initialized
-   ✅ Cache system ready (Redis)
-   ✅ Network analysis graphs loaded
+Experience the ML compliance system directly with sample data!
 
-────────────────────────────────────────────────────────────────
+📋 Available Demos:
 
-[TEST 1/8] GeoIP Validation
-  ├─ Test Case 1: Normal (Google DNS) ..................... ✅ PASS
-  ├─ Test Case 2: VPN Detection (Suspicious) ............. ✅ PASS
-  └─ Test Case 3: Impossible Travel (High Risk) .......... ✅ PASS
-  Result: 3/3 scenarios passed
+  1. GeoIP Validation
+  2. ML Anomaly Detection
+  3. User Segmentation
+  4. Network Fraud Detection
+  5. Multi-Jurisdiction Compliance
+  6. ROI Analysis
+  7. Adaptive Thresholds
+  8. Integration Analysis
 
-[TEST 2/8] ML Anomaly Detection
-  ├─ Normal Event Detection ........................ ✅ PASS
-  ├─ Suspicious Event Detection ................... ✅ PASS
-  └─ Critical Event Detection ..................... ✅ PASS
-  ML Metrics: Precision 96.5% | Recall 94.8% | F1 95.6%
-  Result: 3/3 scenarios passed | All anomalies detected correctly
+================================================================
+💡 Running All Demos
 
-[TEST 3/8] User Segmentation
-  ├─ Power User Configuration ..................... ✅ PASS
-  ├─ New User Configuration ....................... ✅ PASS
-  └─ Suspicious User Configuration ............... ✅ PASS
-  Segments: 1,245 power + 7,852 standard + 845 new + 58 suspicious
-  Result: Dynamic profiles configured successfully
+================================================================
+🔴 1️⃣  GeoIP Validation - IP Address Region Check
+================================================================
 
-[TEST 4/8] Network Fraud Ring Detection
-  ├─ Network Construction (8 users) .............. ✅ PASS
-  ├─ Community Detection Algorithm ............... ✅ PASS
-  └─ Fraud Ring Identification ................... ✅ PASS
-  Detected: 1 fraud ring (6 users, 99.2% confidence)
-  Result: Coordinated fraud detected and flagged
+📍 Sample IP Validation:
 
-[TEST 5/8] Multi-Region Regulatory Compliance
-  ├─ GDPR (EU) Validation ........................ ✅ PASS
-  ├─ CCPA (US) Validation ........................ ✅ PASS
-  ├─ PIPL (China) Validation ..................... ✅ PASS
-  ├─ LGPD (Brazil) Validation .................... ✅ PASS
-  └─ PDPA (Thailand) Validation .................. ✅ PASS
-  Regulations Covered: 10 (GDPR, CCPA, PIPL, LGPD, PDPA + 5 more)
-  Result: All regulatory frameworks validated
+  Google DNS (USA)
+    IP: 8.8.8.8, Claimed Region: US
+    ✓ Flags: None
+    ✓ Score Adjustment: +0
+    ✓ VPN: None
 
-[TEST 6/8] ROI Analysis
-  ├─ Protected Value Calculation ................. ✅ PASS
-  ├─ Cost Analysis .............................. ✅ PASS
-  └─ Fine Prevention Modeling .................... ✅ PASS
-  
-  Financial Results:
-    • Protected Value: $2,330,000
-    • Annual Cost: $260,000
-    • Net Benefit: $2,070,000
-    • ROI: 796%
-    • Payback: 1.5 months
-  Result: Strong business case confirmed
+  Cloudflare DNS (claims Australia)
+    IP: 1.1.1.1, Claimed Region: AU
+    ✓ Flags: None
+    ✓ Score Adjustment: +0
+    ✓ VPN: None
 
-[TEST 7/8] Adaptive Thresholds
-  ├─ Base Threshold Configuration ............... ✅ PASS
-  ├─ Context-Based Adjustment ................... ✅ PASS
-  └─ Pattern Learning System .................... ✅ PASS
-  
-  Learning Progress:
-    • Historical Events Analyzed: 12,847
-    • Patterns Identified: 84
-    • Threshold Adjustments: 23
-    • Confidence Level: 94%
-  Result: Adaptive system learning active
+  Tor Node (claims USA)
+    IP: 185.220.101.1, Claimed Region: US
+    ✓ Flags: None
+    ✓ Score Adjustment: +0
+    ✓ VPN: None
 
-[TEST 8/8] End-to-End Event Processing
-  ├─ Input Validation ........................... ✅ PASS
-  ├─ GeoIP Validation ........................... ✅ PASS
-  ├─ ML Analysis ............................... ✅ PASS
-  ├─ User Segmentation .......................... ✅ PASS
-  ├─ Compliance Checking ........................ ✅ PASS
-  ├─ Network Analysis ........................... ✅ PASS
-  └─ Final Decision Making ...................... ✅ PASS
-  
-  Event Processing:
-    • Risk Scoring: 234ms (target: <500ms) ✅
-    • Decision: BLOCK EVENT (Risk: 12.5/10)
-    • Confidence: 98.7%
-    • Actions: 7 automated responses triggered
-  Result: All pipeline stages completed successfully
+📊 Results Summary:
+                      Description Risk Level  Score
+                 Google DNS (USA)        Low      0
+Cloudflare DNS (claims Australia)        Low      0
+            Tor Node (claims USA)        Low      0
 
-────────────────────────────────────────────────────────────────
-
-📊 OVERALL RESULTS:
-
-Test Coverage: 8/8 comprehensive scenarios passed
-Module Status: ✅ ALL SYSTEMS OPERATIONAL
-
-Performance Metrics:
-  • Average Processing Time: 187ms
-  • Cache Hit Rate: 77.4%
-  • ML Accuracy: 95.6%
-  • Compliance Coverage: 100%
-  • Detection Rate: 98.7%
-
-Security Status:
-  • Attack Pattern Detection: 18/18 ✅
-  • Fraud Ring Detection: 100% success ✅
-  • Regulatory Violations: All detected ✅
-  • Encryption Status: ACTIVE ✅
-
-🎉 DEMO COMPLETE! All 10 modules demonstrated successfully
-   System is fully operational and ready for production.
-
-════════════════════════════════════════════════════════════════
+✓ GeoIP Validation completed
 ```
 
-**Demo Execution Statistics**:
-- **Total Duration**: ~45 seconds
-- **Tests Passed**: 8/8 (100%)
-- **Anomalies Detected**: 12/12 (100% accuracy)
-- **Fraud Rings Found**: 1 (6 coordinated users)
-- **Regulatory Violations**: 5 violations correctly identified
-- **Financial Impact Calculated**: $2.33M protected
-- **Events Processed**: 4,950 with 98.7% accuracy
+**To run the full demo yourself:**
+
+```bash
+# Run the interactive demo with all 8 scenarios
+python interactive_demo.py
+
+# Or run specific scenarios interactively
+# 1. GeoIP Validation - IP address region checking
+# 2. ML Anomaly Detection - Isolation Forest + LOF models
+# 3. User Segmentation - Dynamic user profiling
+# 4. Network Fraud Detection - Graph-based fraud rings
+# 5. Multi-Jurisdiction Compliance - GDPR, CCPA, PIPL validation
+# 6. ROI Analysis - Financial impact calculations
+# 7. Adaptive Thresholds - Context-based risk scoring
+# 8. Integration Analysis - End-to-end pipeline testing
+```
 
 ### Jupyter Notebook Demo
 
