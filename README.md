@@ -5,6 +5,16 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15+-blue.svg)](https://www.postgresql.org)
 [![Redis](https://img.shields.io/badge/Redis-7+-red.svg)](https://redis.io)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-orange.svg)](https://jupyter.org)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-yellow.svg)](https://scikit-learn.org)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-blue.svg)](https://kubernetes.io)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://www.docker.com)
+[![Grafana](https://img.shields.io/badge/Grafana-Monitoring-blue.svg)](https://grafana.com)
+[![Prometheus](https://img.shields.io/badge/Prometheus-Metrics-red.svg)](https://prometheus.io)
+[![Machine Learning](https://img.shields.io/badge/Machine%20Learning-XGBoost%2C%20RF%2C%20SVM-brightgreen.svg)](https://scikit-learn.org)
+[![Data Science](https://img.shields.io/badge/Data%20Science-Pandas%2C%20NumPy-lightblue.svg)](https://pandas.pydata.org)
+[![Real-time](https://img.shields.io/badge/Real--time-Kafka%20Streaming-red.svg)](https://kafka.apache.org)
+[![API](https://img.shields.io/badge/API-GraphQL%20%2B%20REST-brightgreen.svg)](https://graphql.org)
 
 **Enterprise-grade compliance and risk management platform** for OTT (Over-The-Top) streaming services with advanced ML-based anomaly detection, multi-region regulatory compliance, and real-time monitoring.
 
@@ -15,6 +25,41 @@
 - Real-time analytics with Prometheus metrics
 - 18 security patterns for attack detection
 - 22 events/sec throughput with async pipeline
+
+### Technology Stack
+
+#### Core Technologies
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-ORM-orange.svg)](https://www.sqlalchemy.org)
+[![Alembic](https://img.shields.io/badge/Alembic-Migrations-blue.svg)](https://alembic.sqlalchemy.org)
+[![Pydantic](https://img.shields.io/badge/Pydantic-Validation-blue.svg)](https://pydantic-docs.helpmanual.io)
+[![Uvicorn](https://img.shields.io/badge/Uvicorn-ASGI-green.svg)](https://www.uvicorn.org)
+[![WebSocket](https://img.shields.io/badge/WebSocket-Real--time-brightgreen.svg)](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
+[![JWT](https://img.shields.io/badge/JWT-Auth-red.svg)](https://jwt.io)
+
+#### Machine Learning Stack
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-Deep%20Learning-orange.svg)](https://www.tensorflow.org)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-Classical%20ML-yellow.svg)](https://scikit-learn.org)
+[![XGBoost](https://img.shields.io/badge/XGBoost-Gradient%20Boost-blue.svg)](https://xgboost.readthedocs.io)
+[![Isolation Forest](https://img.shields.io/badge/Isolation%20Forest-Anomaly-brightgreen.svg)](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.IsolationForest.html)
+[![LOF](https://img.shields.io/badge/LOF-Outlier%20Detection-yellowgreen.svg)](https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.LocalOutlierFactor.html)
+[![Neural Networks](https://img.shields.io/badge/Neural%20Networks-MLP%20%26%20Ensemble-red.svg)](https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html)
+[![Random Forest](https://img.shields.io/badge/Random%20Forest-Ensemble-blue.svg)](https://scikit-learn.org)
+[![SVM](https://img.shields.io/badge/SVM-Classification-lightblue.svg)](https://scikit-learn.org/stable/modules/svm.html)
+
+#### Data Science Tools
+[![NumPy](https://img.shields.io/badge/NumPy-Numerical-blue.svg)](https://numpy.org)
+[![Pandas](https://img.shields.io/badge/Pandas-Data%20Analysis-blue.svg)](https://pandas.pydata.org)
+[![Matplotlib](https://img.shields.io/badge/Matplotlib-Visualization-blue.svg)](https://matplotlib.org)
+[![Seaborn](https://img.shields.io/badge/Seaborn-Statistical%20Viz-blue.svg)](https://seaborn.pydata.org)
+[![Jupyter](https://img.shields.io/badge/Jupyter-Interactive%20Notebooks-orange.svg)](https://jupyter.org)
+[![Plotly](https://img.shields.io/badge/Plotly-Interactive%20Plots-blue.svg)](https://plotly.com)
+
+#### Infrastructure
+[![Helm](https://img.shields.io/badge/Helm-K8s%20Charts-blue.svg)](https://helm.sh)
+[![docker-compose](https://img.shields.io/badge/docker--compose-Orchestration-blue.svg)](https://docs.docker.com/compose)
+[![Git](https://img.shields.io/badge/Git-Version%20Control-orange.svg)](https://git-scm.com)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-black.svg)](https://github.com)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-Automated%20Testing-green.svg)](https://github.com/features/actions)
 
 ---
 
