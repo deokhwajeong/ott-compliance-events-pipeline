@@ -207,13 +207,58 @@ Experience the full power of the OTT Compliance Pipeline with our interactive de
 
 ### Running the Demo
 
+#### Option 1: Interactive Terminal Demo (Text-based)
+
 ```bash
 # Install demo dependencies (includes geoip2, pandas, etc.)
 pip install -r requirements.txt
 
-# Run the interactive demo
+# Run the interactive demo with all 8 scenarios
 python interactive_demo.py
 ```
+
+**What it shows:**
+- GeoIP Validation results
+- ML Anomaly Detection
+- User Segmentation
+- Network Fraud Detection
+- Compliance Checking
+- And more...
+
+#### Option 2: Web Dashboard (Real-time UI) ⭐ **RECOMMENDED**
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Start the FastAPI server
+python -m uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 3. Open your browser and navigate to:
+# → http://localhost:8000
+```
+
+**What you'll see:**
+- 📊 Real-time processing metrics (live updates every 5 seconds)
+- 📈 Risk distribution pie charts
+- 🔔 Recent alerts and notifications  
+- 📋 Event processing log
+- ✅ Compliance status across all regulations
+- 💰 Financial impact metrics
+- 🎨 Interactive dashboard with responsive design
+
+**Dashboard Features:**
+- Live event counter
+- Risk score visualization
+- Anomaly detection results
+- User segmentation breakdown
+- Compliance violations tracking
+- Admin controls for testing
+
+**Other endpoints:**
+- 📚 API Documentation: `http://localhost:8000/docs`
+- 🎮 GraphQL Playground: `http://localhost:8000/graphql`
+- 📖 ReDoc: `http://localhost:8000/redoc`
 
 ### Demo Screenshots & Output
 
