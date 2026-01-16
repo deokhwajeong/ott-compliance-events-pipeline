@@ -92,18 +92,61 @@ class CacheManager:
             return False
     
     def clear_pattern(self, pattern: str) -> int:
-        """Clear all keys matching pattern (e.g., 'user:*')"""
+        """Clear all keys matching pattern (e.g., 'user:*') with optimized SCAN"""
         if not self.is_connected or not self.client:
             return 0
         
         try:
-            keys = self.client.keys(pattern)
-            if keys:
-                return self.client.delete(*keys)
-            return 0
+            # Use SCAN instead of KEYS for better performance with large datasets
+            deleted = 0
+            cursor = 0
+            while True:
+                cursor, keys = self.client.scan(cursor=cursor, match=pattern, count=100)
+                if keys:
+                    deleted += self.client.delete(*keys)
+                if cursor == 0:
+                    break
+            return deleted
         except Exception as e:
             logger.error(f"Cache CLEAR_PATTERN error: {e}")
             return 0
+    
+    def mget(self, keys: List[str]) -> Dict[str, Any]:
+        """Get multiple values from cache efficiently (single round-trip)"""
+        if not self.is_connected or not self.client or not keys:
+            return {}
+        
+        try:
+            values = self.client.mget(keys)
+            result = {}
+            for key, value in zip(keys, values):
+                if value:
+                    try:
+                        result[key] = json.loads(value)
+                    except:
+                        result[key] = value
+            return result
+        except Exception as e:
+            logger.error(f"Cache MGET error: {e}")
+            return {}
+    
+    def mset(self, data: Dict[str, Any], ttl: int = None) -> bool:
+        """Set multiple values in cache efficiently using pipeline"""
+        if not self.is_connected or not self.client or not data:
+            return False
+        
+        try:
+            ttl = ttl or self.default_ttl
+            pipeline = self.client.pipeline()
+            
+            for key, value in data.items():
+                pipeline.setex(key, ttl, json.dumps(value))
+            
+            pipeline.execute()
+            return True
+        except Exception as e:
+            logger.error(f"Cache MSET error: {e}")
+            return False
     
     def get_user_recent_events(
         self,

@@ -242,7 +242,7 @@ class ViolationPredictor:
     ) -> Dict[str, Any]:
         """
         Predict probability of compliance violation based on history and patterns.
-        Uses pattern matching + statistical analysis.
+        Uses pattern matching + statistical analysis + ML scoring.
         """
         violation_score = 0.0
         risk_factors = []
@@ -251,64 +251,97 @@ class ViolationPredictor:
             return {
                 "violation_likelihood": 0.0,
                 "risk_factors": [],
-                "predicted_regulations": []
+                "predicted_regulations": [],
+                "confidence": 0.0
             }
         
-        recent_events = user_history[-50:] if len(user_history) > 50 else user_history
+        recent_events = user_history[-100:] if len(user_history) > 100 else user_history
         
-        # Factor 1: Consent pattern changes
-        recent_consent = [e.get("has_consent", True) for e in recent_events[-10:]]
-        if recent_consent.count(False) > 5:
-            violation_score += 0.3
+        # Factor 1: Consent pattern changes (GDPR)
+        recent_consent = [e.get("has_consent", True) for e in recent_events[-20:]]
+        no_consent_ratio = recent_consent.count(False) / len(recent_consent)
+        if no_consent_ratio > 0.3:
+            violation_score += 0.35
             risk_factors.append("frequent_no_consent")
         
-        # Factor 2: EU region + no consent
+        # Factor 2: EU region + no consent (GDPR specific)
         eu_no_consent_count = sum(
             1 for e in recent_events 
             if e.get("is_eu") and not e.get("has_consent")
         )
-        if eu_no_consent_count > 2:
-            violation_score += 0.4
+        if eu_no_consent_count > 3:
+            violation_score += 0.45
             risk_factors.append("gdpr_violation_pattern")
         
-        # Factor 3: Data access patterns (potential California violation)
+        # Factor 3: Data access patterns (CCPA/data protection)
         data_access_events = [
             e for e in recent_events 
-            if e.get("event_type") in {"export", "download", "access"}
+            if e.get("event_type") in {"export", "download", "access", "bulk_download"}
         ]
         if len(data_access_events) > 10:
-            violation_score += 0.2
+            violation_score += 0.25
             risk_factors.append("high_data_access_frequency")
         
-        # Factor 4: Failed auth attempts (potential account compromise)
+        # Factor 4: Failed auth attempts (security + potential compromise)
         failed_auth = sum(
             1 for e in recent_events 
             if e.get("event_type") in {"login_failed", "token_refresh_failed"}
         )
         if failed_auth > 5:
-            violation_score += 0.1
+            violation_score += 0.15
             risk_factors.append("repeated_auth_failures")
+        
+        # Factor 5: Rapid region changes (impossible travel indicator)
+        ip_addresses = [e.get("ip_address") for e in recent_events[-5:] if e.get("ip_address")]
+        if len(set(ip_addresses)) > 3:
+            violation_score += 0.2
+            risk_factors.append("suspicious_geo_variance")
+        
+        # Factor 6: Error spikes (potential DDoS or attack attempt)
+        error_events = sum(1 for e in recent_events if e.get("event_type") == "error")
+        error_ratio = error_events / len(recent_events) if recent_events else 0
+        if error_ratio > 0.4:
+            violation_score += 0.1
+            risk_factors.append("elevated_error_rate")
         
         # Predicted regulations at risk
         predicted_regulations = []
         if "gdpr_violation_pattern" in risk_factors:
-            predicted_regulations.append(("GDPR", 0.9))
+            predicted_regulations.append(("GDPR", 0.95))
         if "high_data_access_frequency" in risk_factors:
-            predicted_regulations.append(("CCPA", 0.7))
+            predicted_regulations.append(("CCPA", 0.80))
         if "repeated_auth_failures" in risk_factors:
-            predicted_regulations.append(("Account Security", 0.8))
+            predicted_regulations.append(("Account Security", 0.85))
+        if "suspicious_geo_variance" in risk_factors:
+            predicted_regulations.append(("GDPR", 0.70))
+        if "elevated_error_rate" in risk_factors:
+            predicted_regulations.append(("System Integrity", 0.60))
+        
+        # Confidence based on sample size and consistency
+        confidence = min(len(recent_events) / 50, 1.0)
+        if len(risk_factors) > 3:
+            confidence = min(confidence * 1.2, 1.0)
         
         return {
             "violation_likelihood": min(violation_score, 1.0),
-            "risk_factors": risk_factors,
+            "risk_factors": list(set(risk_factors)),
             "predicted_regulations": predicted_regulations,
-            "confidence": min(len(recent_events) / 100, 1.0)  # Confidence based on sample size
+            "confidence": confidence,
+            "sample_size": len(recent_events)
+        }
+    
+    def get_violation_stats(self) -> Dict[str, Any]:
+        """Get statistics about violation predictions"""
+        return {
+            "pattern_count": len(self.violation_patterns),
+            "patterns": list(self.violation_patterns.keys())
         }
     
     def save_model(self) -> None:
         """Save violation patterns to disk"""
         try:
             joblib.dump(self.violation_patterns, self.model_path)
+            logger.info("Violation predictor saved successfully")
         except Exception as e:
             logger.error(f"Failed to save violation predictor: {e}")
     
@@ -317,10 +350,42 @@ class ViolationPredictor:
         try:
             if self.model_path.exists():
                 self.violation_patterns = joblib.load(self.model_path)
+                logger.info(f"Violation predictor loaded with {len(self.violation_patterns)} patterns")
         except Exception as e:
             logger.warning(f"Could not load violation predictor: {e}")
+
+
+class ModelEnsembleMetrics:
+    """Track and manage metrics for all ML models"""
+    
+    def __init__(self):
+        self.metrics = {
+            "anomaly_detector": {"predictions": 0, "true_positives": 0, "false_positives": 0},
+            "violation_predictor": {"predictions": 0, "accuracy": 0.0},
+            "last_retrain": None,
+            "model_accuracy": {}
+        }
+    
+    def record_prediction(self, model_name: str, result: bool, actual: bool = None):
+        """Record prediction for metrics tracking"""
+        if model_name not in self.metrics:
+            self.metrics[model_name] = {"predictions": 0, "accuracy": 0.0}
+        
+        self.metrics[model_name]["predictions"] += 1
+        
+        if actual is not None and result == actual:
+            current = self.metrics[model_name].get("accuracy", 0.0)
+            self.metrics[model_name]["accuracy"] = (
+                (current * (self.metrics[model_name]["predictions"] - 1) + 1) / 
+                self.metrics[model_name]["predictions"]
+            )
+    
+    def get_metrics(self) -> Dict[str, Any]:
+        """Get all model metrics"""
+        return self.metrics
 
 
 # Global instances
 anomaly_detector = EnhancedAnomalyDetector()
 violation_predictor = ViolationPredictor()
+model_metrics = ModelEnsembleMetrics()

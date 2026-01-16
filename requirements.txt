@@ -25,3 +25,8 @@ networkx
 joblib
 pandas
 matplotlib
+python-multipart
+gunicorn
+psycopg2-binary
+cryptography
+python-dateutil
