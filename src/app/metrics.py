@@ -162,4 +162,51 @@ class MetricsRecorder:
         if direction == "send":
             kafka_messages_sent.labels(topic=topic).inc()
         else:
-            kafka_messages_consumed.labels(topic=topic).inc()
+            kafka_messages_consumed.labels(topic=topic).inc()    
+    @staticmethod
+    def record_cache_hit(cache_type: str = "redis"):
+        """Record cache hit"""
+        try:
+            cache_hits.labels(cache_type=cache_type).inc()
+        except:
+            pass  # Metric might not be defined in all configurations
+    
+    @staticmethod
+    def record_cache_miss(cache_type: str = "redis"):
+        """Record cache miss"""
+        try:
+            cache_misses.labels(cache_type=cache_type).inc()
+        except:
+            pass
+    
+    @staticmethod
+    def record_ml_prediction(model_name: str, accuracy: float):
+        """Record ML model prediction accuracy"""
+        try:
+            ml_model_accuracy.labels(model_name=model_name).set(accuracy)
+        except:
+            pass
+
+
+# Optional metrics for advanced monitoring
+try:
+    cache_hits = Histogram(
+        'ott_cache_hits_total',
+        'Total cache hits',
+        ['cache_type'],
+    )
+    
+    cache_misses = Histogram(
+        'ott_cache_misses_total',
+        'Total cache misses',
+        ['cache_type'],
+    )
+    
+    ml_model_accuracy = Gauge(
+        'ott_ml_model_accuracy',
+        'ML model accuracy',
+        ['model_name'],
+    )
+except:
+    # Already defined
+    pass
