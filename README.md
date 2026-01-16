@@ -1028,6 +1028,24 @@ This notebook contains the same scenarios with cell-by-cell execution and rich H
 
 Access the real-time web dashboard at `http://localhost:8000` in your web browser.
 
+### 🖼️ Dashboard Screenshots
+
+Here are actual screenshots of the OTT Compliance Dashboard:
+
+#### Main Dashboard Overview
+![Dashboard Overview](docs/images/dashboard-overview.svg)
+
+#### Interactive Dashboard Preview
+📱 **View the full interactive dashboard preview**: [Open Dashboard HTML](docs/images/dashboard-preview.html)
+
+This preview shows:
+- Real-time event processing metrics
+- Risk distribution visualization
+- Recent alerts and warnings
+- Compliance status across all regulations
+- Financial impact calculations
+- Performance metrics and KPIs
+
 ### Dashboard Features
 - 📊 **Real-time Metrics**: Live event processing statistics and risk distribution
 - 📈 **Risk Distribution Charts**: Donut/pie charts for low/medium/high risk levels
