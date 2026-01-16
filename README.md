@@ -1033,10 +1033,10 @@ Access the real-time web dashboard at `http://localhost:8000` in your web browse
 Here are actual screenshots of the OTT Compliance Dashboard:
 
 #### Main Dashboard Overview
-![Dashboard Overview](docs/images/dashboard-overview.svg)
+![Dashboard Overview](https://raw.githubusercontent.com/deokhwajeong/ott-compliance-events-pipeline/main/docs/images/dashboard-overview.svg)
 
 #### Interactive Dashboard Preview
-📱 **View the full interactive dashboard preview**: [Open Dashboard HTML](docs/images/dashboard-preview.html)
+📱 **View the full interactive dashboard preview**: [Open Dashboard HTML](https://htmlpreview.github.io/?https://raw.githubusercontent.com/deokhwajeong/ott-compliance-events-pipeline/main/docs/images/dashboard-preview.html)
 
 This preview shows:
 - Real-time event processing metrics
