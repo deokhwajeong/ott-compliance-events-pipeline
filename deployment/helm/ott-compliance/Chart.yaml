@@ -1,0 +1,21 @@
+apiVersion: v2
+name: ott-compliance
+description: A comprehensive OTT compliance events pipeline with advanced analytics
+type: application
+version: 3.0.0
+appVersion: "3.0.0"
+home: https://github.com/yourusername/ott-compliance-events-pipeline
+sources:
+  - https://github.com/yourusername/ott-compliance-events-pipeline
+maintainers:
+  - name: Your Organization
+    email: support@yourorg.com
+keywords:
+  - ott
+  - compliance
+  - analytics
+  - kafka
+  - machine-learning
+  - graphql
+  - websocket
+  - kubernetes

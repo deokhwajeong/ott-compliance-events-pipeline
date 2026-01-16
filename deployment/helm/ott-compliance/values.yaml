@@ -1,0 +1,104 @@
+# Default values for ott-compliance Helm chart
+replicaCount: 3
+
+image:
+  repository: ott-compliance
+  tag: "3.0.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: compliance.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: ott-compliance-tls
+      hosts:
+        - compliance.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+postgresql:
+  enabled: true
+  auth:
+    username: compliance
+    password: changeme
+    database: compliance_db
+  persistence:
+    size: 10Gi
+
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    password: changeme
+  master:
+    persistence:
+      size: 5Gi
+
+kafka:
+  enabled: false  # Use external Kafka
+  brokers: "kafka-broker-0:9092,kafka-broker-1:9092"
+
+websocket:
+  enabled: true
+  port: 8000
+  heartbeat_interval: 30
+
+graphql:
+  enabled: true
+  endpoint: "/graphql"
+
+tracing:
+  enabled: true
+  jaeger:
+    endpoint: "jaeger:14268"
+    sampling_rate: 1.0
+
+encryption:
+  enabled: true
+  tls_version: "1.3"
+  key_rotation_days: 90
+
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+    port: 9090
+  grafana:
+    enabled: true
+    port: 3000
+
+multi_tenancy:
+  enabled: true
+  default_tier: "standard"
+  storage_class: "fast-ssd"
+
+environment: production
