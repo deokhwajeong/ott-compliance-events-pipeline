@@ -205,3 +205,45 @@ class ReportGenerator:
 advanced_analytics = AdvancedAnalytics()
 report_generator_advanced = ReportGenerator()
 
+
+
+class RealTimeMetricsAggregator:
+    """Real-time metrics aggregation for monitoring dashboard"""
+    
+    def __init__(self, window_size: int = 300):
+        self.window_size = window_size
+        self.metrics_buffer = []
+        
+    def aggregate_metrics(self, metrics: dict) -> dict:
+        """Aggregate metrics over time window"""
+        self.metrics_buffer.append(metrics)
+        
+        if len(self.metrics_buffer) > self.window_size:
+            self.metrics_buffer.pop(0)
+        
+        return {
+            'avg_latency': self._calculate_average('latency'),
+            'max_latency': self._calculate_max('latency'),
+            'error_rate': self._calculate_error_rate(),
+            'throughput': len(self.metrics_buffer) / self.window_size
+        }
+    
+    def _calculate_average(self, metric_name: str) -> float:
+        """Calculate average metric value"""
+        if not self.metrics_buffer:
+            return 0.0
+        values = [m.get(metric_name, 0) for m in self.metrics_buffer]
+        return sum(values) / len(values)
+    
+    def _calculate_max(self, metric_name: str) -> float:
+        """Calculate max metric value"""
+        if not self.metrics_buffer:
+            return 0.0
+        return max(m.get(metric_name, 0) for m in self.metrics_buffer)
+    
+    def _calculate_error_rate(self) -> float:
+        """Calculate error rate"""
+        if not self.metrics_buffer:
+            return 0.0
+        errors = sum(1 for m in self.metrics_buffer if m.get('is_error', False))
+        return (errors / len(self.metrics_buffer)) * 100
