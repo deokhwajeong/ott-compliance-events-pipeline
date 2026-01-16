@@ -242,3 +242,53 @@ class DataSanitizer:
 # Global rate limiter
 rate_limiter = RateLimiter(max_requests=10000, window_seconds=60)
 
+
+
+class AdvancedSecurityValidator:
+    """Advanced security validation with pattern matching"""
+    
+    def __init__(self):
+        self.threat_patterns = {
+            'sql_injection': [
+                r"('\s*OR\s*'|'\s*;\s*|'\s*--)", 
+                r'(UNION|SELECT|INSERT|UPDATE|DELETE)',
+                r'(DROP|CREATE|ALTER)'
+            ],
+            'xss_injection': [
+                r'(<script[^>]*>|javascript:|onerror=|onload=)',
+                r'(iframe|embed|object)',
+                r'(alert\(|eval\(|setTimeout\()'
+            ],
+            'path_traversal': [
+                r'(\.\./|\.\.\\)',
+                r'(%2e%2e)',
+                r'(\/etc\/|\/windows\/)'
+            ]
+        }
+        self.blocked_count = 0
+        self.logged_threats = []
+    
+    def validate_request(self, data: str) -> tuple[bool, str]:
+        """Validate request against threat patterns"""
+        for threat_type, patterns in self.threat_patterns.items():
+            for pattern in patterns:
+                if self._matches_pattern(data, pattern):
+                    self.blocked_count += 1
+                    return False, threat_type
+        return True, 'clean'
+    
+    def _matches_pattern(self, data: str, pattern: str) -> bool:
+        """Check if data matches threat pattern"""
+        import re
+        try:
+            return bool(re.search(pattern, data, re.IGNORECASE))
+        except:
+            return False
+    
+    def get_security_stats(self) -> dict:
+        """Get security validation statistics"""
+        return {
+            'total_blocked': self.blocked_count,
+            'threats_logged': len(self.logged_threats),
+            'validation_status': 'active'
+        }
