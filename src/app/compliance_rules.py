@@ -1,40 +1,38 @@
-from typing import Dict, Any
-from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from .models import RawEvent, ProcessedEvent
-import numpy as np
-from sklearn.preprocessing import StandardScaler
+import asyncio
 import logging
+from datetime import UTC, datetime, timedelta
+from typing import Any, Dict
+
+from sqlalchemy.orm import Session
+
+from .adaptive_thresholds import adaptive_thresholds
+from .alerting import AlertSeverity, alerting_system
 
 # Import new ML modules
 from .geoip_validator import geoip_validator
 from .ml_models import anomaly_detector, violation_predictor
-from .adaptive_thresholds import adaptive_thresholds
-from .cache import cache_manager
-from .user_segments import user_segmentation
+from .models import ProcessedEvent, RawEvent
 from .network_analysis import network_fraud_detector
 from .regulations import compliance_checker
-from .alerting import alerting_system
-import asyncio
+from .user_segments import user_segmentation
 
 logger = logging.getLogger(__name__)
 
+# Keep references to fire-and-forget alert tasks so they are not GC'd early.
+_background_tasks: set = set()
 
-def detect_anomaly_with_ml(scores: list) -> bool:
-    """
-    Simple ML-based anomaly detection using z-score.
-    Returns True if the last score is anomalous.
-    """
-    if len(scores) < 3:
-        return False
-    
-    scaler = StandardScaler()
-    scores_array = np.array(scores).reshape(-1, 1)
-    scaled_scores = scaler.fit_transform(scores_array)
-    
-    # Z-score of the last score
-    z_score = scaled_scores[-1][0]
-    return abs(z_score) > 2.0  # Threshold for anomaly
+
+def _parse_timestamp(timestamp: Any) -> datetime:
+    """Parse an ISO-8601 timestamp into a naive UTC datetime (DB convention)."""
+    if isinstance(timestamp, str):
+        try:
+            parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            if parsed.tzinfo is not None:
+                parsed = parsed.astimezone(UTC).replace(tzinfo=None)
+            return parsed
+        except ValueError:
+            pass
+    return datetime.utcnow()
 
 
 def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, Any]:
@@ -55,8 +53,9 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     is_eu = event.get("is_eu", False)
     has_consent = event.get("has_consent", True)
     subscription_plan = event.get("subscription_plan", "basic")
-    content_id = event.get("content_id")
     payment_method = event.get("payment_method")
+    extra = event.get("extra_metadata") or {}
+    event_time = _parse_timestamp(timestamp)
 
     # ========================
     # 1. GeoIP Validation
@@ -64,15 +63,20 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     if ip_address and region:
         try:
             geoip_result = geoip_validator.validate_ip_region_consistency(ip_address, region)
-            if not geoip_result.get("region_match", True):
-                flags.append("geoip_region_mismatch")
-                score += geoip_result.get("risk_score", 0.5)
+            geo_flags = [
+                f
+                for f in geoip_result.get("flags", [])
+                if f in {"ip_region_mismatch", "vpn_detected", "datacenter_ip"}
+            ]
+            if geo_flags:
+                flags.extend(geo_flags)
+                score += geoip_result.get("score_adjustment", 0)
                 detailed_findings["geoip_validation"] = geoip_result
-            
-            # Check for impossible travel
+
+            # Check for impossible travel against the user's last location
             if user_id:
-                travel_result = geoip_validator.detect_impossible_travel(user_id, ip_address)
-                if travel_result.get("impossible_travel", False):
+                travel_result = geoip_validator.check_user_travel(user_id, ip_address, event_time.timestamp())
+                if travel_result and travel_result.get("impossible_travel", False):
                     flags.append("impossible_travel_detected")
                     score += 3.0
                     detailed_findings["impossible_travel"] = travel_result
@@ -112,28 +116,39 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
         try:
             # Get user metrics
             all_events = db.query(RawEvent).filter(RawEvent.user_id == user_id).all()
-            
+
             if all_events:
                 now = datetime.utcnow()
                 thirty_days_ago = now - timedelta(days=30)
                 seven_days_ago = now - timedelta(days=7)
-                
+
                 events_30d = [e for e in all_events if e.timestamp >= thirty_days_ago]
                 events_7d = [e for e in all_events if e.timestamp >= seven_days_ago]
-                
-                violations_30d = db.query(ProcessedEvent).filter(
-                    ProcessedEvent.event_id.in_([e.event_id for e in events_30d]),
-                    ProcessedEvent.risk_level.in_(["high", "critical"])
-                ).count()
-                
+
+                violations_30d = (
+                    db.query(ProcessedEvent)
+                    .filter(
+                        ProcessedEvent.event_id.in_([e.event_id for e in events_30d]),
+                        ProcessedEvent.risk_level.in_(["high", "critical"]),
+                    )
+                    .count()
+                )
+
                 days_since_signup = max(1, (now - min(e.timestamp for e in all_events)).days)
                 last_activity_days = (now - max(e.timestamp for e in all_events)).days
-                avg_risk = sum(
-                    db.query(ProcessedEvent.risk_score).filter(
-                        ProcessedEvent.event_id == e.event_id
-                    ).scalar() or 0.0 for e in events_30d
-                ) / len(events_30d) if events_30d else 0.0
-                
+                avg_risk = (
+                    sum(
+                        db.query(ProcessedEvent.risk_score)
+                        .filter(ProcessedEvent.event_id == e.event_id)
+                        .scalar()
+                        or 0.0
+                        for e in events_30d
+                    )
+                    / len(events_30d)
+                    if events_30d
+                    else 0.0
+                )
+
                 user_segment = user_segmentation.update_user_profile(
                     user_id=user_id,
                     event_count_30d=len(events_30d),
@@ -141,9 +156,9 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
                     violation_count_30d=violations_30d,
                     days_since_signup=days_since_signup,
                     last_activity_days_ago=last_activity_days,
-                    avg_risk_score=avg_risk
+                    avg_risk_score=avg_risk,
                 )
-                
+
                 user_risk_params = user_segmentation.get_segment_risk_parameters(user_segment)
                 detailed_findings["user_segment"] = {
                     "segment": user_segment.value,
@@ -157,9 +172,9 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     # ========================
     try:
         dynamic_threshold = adaptive_thresholds.get_dynamic_risk_threshold(
+            user_segment=user_segment.value if user_segment else "normal_user",
+            hour=event_time.hour,
             region=region,
-            user_segment=user_segment,
-            time_of_day_utc=datetime.utcnow().hour
         )
         detailed_findings["adaptive_threshold"] = dynamic_threshold
     except Exception as e:
@@ -172,18 +187,15 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     if user_id:
         try:
             network_fraud_detector.add_user_event(
-                user_id=user_id,
-                device_id=device_id,
-                ip_address=ip_address,
-                payment_method=payment_method
+                user_id=user_id, device_id=device_id, ip_address=ip_address, payment_method=payment_method
             )
-            
+
             network_risk = network_fraud_detector.get_user_network_risk(user_id, max_hops=2)
-            
+
             if network_risk.get("risk_score", 0) > 0.5:
                 flags.append("fraud_ring_connection")
                 score += network_risk["risk_score"] * 2.0
-            
+
             detailed_findings["network_analysis"] = network_risk
         except Exception as e:
             logger.warning(f"Network fraud detection failed: {e}")
@@ -194,29 +206,14 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     ml_result = None
     if db and user_id:
         try:
-            # Extract features from event
-            event_features = {
-                "hour": datetime.utcnow().hour,
-                "weekday": datetime.utcnow().weekday(),
-                "event_type_len": len(event_type),
-                "has_error": int(event_type in {"error", "login_failed"}),
-                "is_eu": int(is_eu),
-                "has_consent": int(has_consent),
-                "subscription_tier": {"basic": 1, "standard": 2, "premium": 3}.get(subscription_plan, 1),
-                "device_id": hash(device_id) % 1000 if device_id else 0,
-                "region_code": hash(region) % 100 if region else 0,
-            }
-            
-            # Use ensemble anomaly detection
-            ml_result = anomaly_detector.ensemble_anomaly_detection(event_features)
-            
+            # The detector extracts its own numeric features from the raw
+            # event and adds them to its rolling history.
+            ml_result = anomaly_detector.ensemble_anomaly_detection(event)
+
             if ml_result["is_anomaly"]:
                 flags.append("ml_ensemble_anomaly")
-                score += ml_result.get("anomaly_score", 2.0)
-            
-            # Add to feature history for continuous learning
-            anomaly_detector._add_to_history(event_features, is_violation=False)
-            
+                score += 2.0
+
             detailed_findings["ml_anomaly_detection"] = ml_result
         except Exception as e:
             logger.warning(f"ML anomaly detection failed: {e}")
@@ -226,18 +223,30 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     # ========================
     if user_id:
         try:
-            violation_pred = violation_predictor.predict_violation_likelihood(
-                user_id=user_id,
-                recent_events_count=db.query(RawEvent).filter(
-                    RawEvent.user_id == user_id
-                ).count() if db else 0,
-                average_risk_score=score
-            )
-            
+            history = []
+            if db:
+                rows = (
+                    db.query(RawEvent)
+                    .filter(RawEvent.user_id == user_id)
+                    .order_by(RawEvent.timestamp.desc())
+                    .limit(100)
+                    .all()
+                )
+                history = [
+                    {
+                        "event_type": r.event_type,
+                        "is_eu": r.is_eu,
+                        "has_consent": r.has_consent,
+                        "ip_address": r.ip_address,
+                    }
+                    for r in reversed(rows)
+                ]
+            violation_pred = violation_predictor.predict_violation_likelihood(history or [event], event)
+
             if violation_pred.get("violation_likelihood", 0) > 0.7:
                 flags.append("high_violation_risk")
                 score += violation_pred.get("violation_likelihood", 0.7) * 2.0
-            
+
             detailed_findings["violation_prediction"] = violation_pred
         except Exception as e:
             logger.warning(f"Violation prediction failed: {e}")
@@ -250,13 +259,22 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
             user_id=user_id or "unknown",
             event_type=event_type,
             region=region,
-            event_details={"has_explicit_consent": has_consent}
+            event_details={
+                "has_explicit_consent": has_consent,
+                "is_eu": is_eu,
+                "gpc_signal": bool(extra.get("gpc")),
+                "targeted_ad": bool(extra.get("targeted")),
+            },
         )
-        
+
         if not compliance_result["compliant"]:
             flags.append("multi_country_violation")
-            score += len(compliance_result["violations"]) * 2.0
-        
+            for v in compliance_result["violations"]:
+                flags.append(f"{v['regulation'].lower()}_{v['action']}_violation")
+            # Same weight as the direct EU consent check: a confirmed statutory
+            # violation should never land in the "low" bucket.
+            score += len(compliance_result["violations"]) * 5.0
+
         detailed_findings["compliance_check"] = compliance_result
     except Exception as e:
         logger.warning(f"Compliance check failed: {e}")
@@ -274,20 +292,23 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     # ========================
     if db and user_id and timestamp:
         try:
-            event_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
             window_start = event_time - timedelta(hours=1)
-            
-            recent_events = db.query(RawEvent).filter(
-                RawEvent.user_id == user_id,
-                RawEvent.timestamp >= window_start,
-                RawEvent.timestamp <= event_time
-            ).all()
-            
+
+            recent_events = (
+                db.query(RawEvent)
+                .filter(
+                    RawEvent.user_id == user_id,
+                    RawEvent.timestamp >= window_start,
+                    RawEvent.timestamp <= event_time,
+                )
+                .all()
+            )
+
             regions_in_window = set(e.region for e in recent_events)
             if len(regions_in_window) > 2:
                 flags.append("multi_region_access")
                 score += 2
-            
+
             if len(recent_events) > 10:
                 flags.append("high_frequency_activity")
                 score += 1
@@ -300,7 +321,7 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     # Use adaptive threshold if available
     threshold_high = dynamic_threshold if dynamic_threshold else 8.0
     threshold_medium = max(0, threshold_high - 3.0)
-    
+
     if score >= threshold_high:
         risk_level = "high"
     elif score >= threshold_medium:
@@ -322,31 +343,31 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
         try:
             # Record for adaptive threshold learning
             adaptive_thresholds.record_event(
+                risk_score=score,
+                is_violation=risk_level == "high",
+                user_segment=user_segment.value if user_segment else "normal_user",
+                hour=event_time.hour,
                 region=region,
-                time_of_day=datetime.utcnow().hour,
-                score=score,
-                violation=risk_level == "high"
             )
-            
-            # Update ML history with violation
-            if ml_result:
-                anomaly_detector._add_to_history(
-                    ml_result.get("features", {}),
-                    is_violation=True
-                )
-            
-            # Send alert for high-risk events
+
+            # Send alert for high-risk events (fire-and-forget when an event
+            # loop is running, e.g. inside the API; skipped in plain scripts)
             try:
-                asyncio.create_task(
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            if loop is not None:
+                task = loop.create_task(
                     alerting_system.send_alert(
-                        severity="HIGH" if risk_level == "high" else "CRITICAL",
                         title=f"High-risk event detected for user {user_id}",
-                        message=f"Risk score: {score}. Flags: {', '.join(flags)}",
-                        details=result
+                        severity=AlertSeverity.HIGH,
+                        event=event,
+                        flags=flags,
+                        risk_score=score,
                     )
                 )
-            except Exception as e:
-                logger.warning(f"Could not send alert: {e}")
+                _background_tasks.add(task)
+                task.add_done_callback(_background_tasks.discard)
         except Exception as e:
             logger.warning(f"Failed to record metrics: {e}")
 

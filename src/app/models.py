@@ -1,5 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Float
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+
 from .db import Base
+
 
 class RawEvent(Base):
     __tablename__ = "raw_events"
@@ -19,6 +21,7 @@ class RawEvent(Base):
     extra_metadata = Column(Text, nullable=True)  # JSON string
     subscription_plan = Column(String, nullable=True)
 
+
 class ProcessedEvent(Base):
     __tablename__ = "processed_events"
 
@@ -28,6 +31,7 @@ class ProcessedEvent(Base):
     risk_level = Column(String)  # low, medium, high
     flags = Column(Text)  # JSON string of flags list
     processed_at = Column(DateTime)
+
 
 class AggregateStats(Base):
     __tablename__ = "aggregate_stats"
