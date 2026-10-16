@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, model_validator, validator
 
 
 class Event(BaseModel):
@@ -39,10 +39,21 @@ class Event(BaseModel):
             "bulk_download",
             "access",
             "ad_impression",
+            # Data subject requests (see dsr.py)
+            "dsr_access_request",
+            "dsr_deletion_request",
+            "dsr_extension",
+            "dsr_completed",
         }
         if v not in valid_types:
             raise ValueError(f"Invalid event type: {v}. Must be one of {valid_types}")
         return v
+
+    @model_validator(mode="after")
+    def dsr_events_need_request_id(self):
+        if self.event_type.startswith("dsr_") and not (self.extra_metadata or {}).get("request_id"):
+            raise ValueError("dsr_* events need extra_metadata.request_id")
+        return self
 
     @validator("ip_address")
     def validate_ip(cls, v):

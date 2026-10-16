@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from .adaptive_thresholds import adaptive_thresholds
 from .alerting import AlertSeverity, alerting_system
+from .dsr import DSR_EVENT_TYPES, apply_dsr_event
 
 # Import new ML modules
 from .geoip_validator import geoip_validator
@@ -103,7 +104,10 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
     # ========================
     # 4. Consent and Privacy
     # ========================
-    if is_eu and not has_consent:
+    # A data subject request is the subscriber exercising a right, not
+    # processing that needs consent, so the consent check does not apply.
+    is_dsr = event_type in DSR_EVENT_TYPES
+    if is_eu and not has_consent and not is_dsr:
         flags.append("eu_privacy_violation")
         score += 5
 
@@ -264,6 +268,7 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
                 "is_eu": is_eu,
                 "gpc_signal": bool(extra.get("gpc")),
                 "targeted_ad": bool(extra.get("targeted")),
+                "third_party_share": bool(extra.get("third_party")),
             },
         )
 
@@ -278,6 +283,26 @@ def evaluate_compliance(event: Dict[str, Any], db: Session = None) -> Dict[str, 
         detailed_findings["compliance_check"] = compliance_result
     except Exception as e:
         logger.warning(f"Compliance check failed: {e}")
+
+    # ========================
+    # 10b. Data Subject Requests
+    # ========================
+    # Receipt, extension and completion events update the request record in
+    # dsr.py. A completion after the regulation's deadline is a statutory
+    # finding and is weighted like any other confirmed violation.
+    if is_dsr and db is not None:
+        try:
+            regs = detailed_findings.get("compliance_check", {}).get("applicable_regulations", [])
+            dsr_result = apply_dsr_event(event, regs, db)
+            flags.extend(dsr_result["flags"])
+            missed = [f for f in dsr_result["flags"] if f.endswith("_violation")]
+            if missed:
+                flags.append("dsr_deadline_missed")
+            score += len(missed) * 5.0
+            if dsr_result["finding"]:
+                detailed_findings["data_subject_request"] = dsr_result["finding"]
+        except Exception as e:
+            logger.warning(f"DSR tracking failed: {e}")
 
     # ========================
     # 11. Subscription-Based Adjustment

@@ -43,3 +43,20 @@ class AggregateStats(Base):
     low_risk_count = Column(Integer, default=0)
     medium_risk_count = Column(Integer, default=0)
     high_risk_count = Column(Integer, default=0)
+
+
+class DataSubjectRequest(Base):
+    """One access or deletion request, built from dsr_* events (see dsr.py)."""
+
+    __tablename__ = "data_subject_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    request_id = Column(String, unique=True, index=True, nullable=False)
+    user_id = Column(String, index=True)
+    region = Column(String)
+    request_type = Column(String)  # access | deletion
+    regulations = Column(Text)  # JSON list, fixed at receipt
+    received_at = Column(DateTime, nullable=False)
+    extension_noticed_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+    last_event_id = Column(String, nullable=True)

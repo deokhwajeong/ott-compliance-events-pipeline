@@ -25,6 +25,7 @@ from .auth import (
 from .cache import cache_manager
 from .compliance_rules import evaluate_compliance
 from .db import engine, get_db
+from .dsr import deadline_table, list_requests, summarize
 
 # New ML and compliance modules
 from .geoip_validator import geoip_validator
@@ -53,7 +54,8 @@ app = FastAPI(
     version="0.2.0",
     description=(
         "Ingests OTT viewing, login and ad events, checks each one against the "
-        "privacy rules of its market (GDPR, CCPA, PIPEDA, LGPD, ...), adds "
+        "privacy rules of its market (GDPR, CCPA, PIPEDA, LGPD, APPI, ...), tracks "
+        "data subject requests against per-regulation deadlines, adds "
         "behavioral risk signals, and stores a scored result. "
         "Get a token from `POST /token` (local demo account `admin` / `admin123`)."
     ),
@@ -697,6 +699,37 @@ async def get_segment_statistics(current_user: User = Depends(get_current_active
 # ========================
 # Compliance and Regulations Endpoints
 # ========================
+
+
+@app.get("/api/v1/dsr")
+async def dsr_requests(
+    as_of: str | None = None,
+    status_filter: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Data subject requests with their deadline and SLA status.
+
+    Status depends on time (an open request can become overdue with no new
+    event), so it is computed at read time. `as_of` (ISO-8601) evaluates the
+    queue at another point in time.
+    """
+    from .compliance_rules import _parse_timestamp
+
+    when = _parse_timestamp(as_of) if as_of else None
+    items = list_requests(db, as_of=when)
+    if status_filter:
+        items = [r for r in items if r["status"] == status_filter]
+    return {"as_of": (when or datetime.utcnow()).isoformat(), "summary": summarize(items), "requests": items}
+
+
+@app.get("/api/v1/dsr/deadlines")
+async def dsr_deadlines():
+    """The modeled response deadline per regulation and request type, with citations."""
+    return {
+        "deadlines": deadline_table(),
+        "disclaimer": "Portfolio model of statutory periods, not legal advice.",
+    }
 
 
 @app.get("/api/v1/regulations/supported")

@@ -4,6 +4,8 @@ import logging
 from enum import Enum
 from typing import Any, Dict, List
 
+from .dsr import get_deadline
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,6 +22,7 @@ class Regulation(str, Enum):
     PIPEDA = "PIPEDA"  # Canada - Personal Information Protection and Electronic Documents Act
     KVKK = "KVKK"  # Turkey - Kişisel Verileri Koruma Kanunu
     PDPL = "PDPL"  # Singapore - Personal Data Protection Act
+    APPI = "APPI"  # Japan - Act on the Protection of Personal Information
 
 
 class RegulationFramework:
@@ -71,6 +74,7 @@ class RegulationFramework:
         "AU": [Regulation.APRA],
         "TR": [Regulation.KVKK],
         "SG": [Regulation.PDPL],
+        "JP": [Regulation.APPI],
     }
 
     # Regulation requirements
@@ -81,7 +85,8 @@ class RegulationFramework:
             "right_to_deletion": True,
             "right_to_access": True,
             "data_portability": True,
-            "breach_notification_days": 72,
+            # Art. 33(1): notify the supervisory authority within 72 hours.
+            "breach_notification_days": 3,
             "dpia_required": True,
             "dpo_required": True,
             "max_retention_years": 7,
@@ -189,6 +194,30 @@ class RegulationFramework:
             "dpo_required": True,
             "max_retention_years": 5,
         },
+        # APPI is not an opt-in regime for ordinary processing: a business may
+        # use personal information within the purpose of use it specified and
+        # published (Arts. 17, 18, 21). Prior consent is required to provide
+        # personal data to a third party (Art. 27(1)), and a provider of
+        # "personally referable information" (e.g. cookie or device-level
+        # viewing data) must confirm the recipient obtained the person's
+        # consent when the recipient will link it to personal data (Art. 31).
+        # Article numbers follow the Act as amended in 2020/2021, in force
+        # April 2022. No fixed maximum retention period is set, so the key is
+        # left out instead of inventing one.
+        Regulation.APPI: {
+            "consent_required": False,
+            "third_party_consent_required": True,
+            "data_minimization": False,
+            "right_to_deletion": True,
+            "right_to_access": True,
+            "data_portability": False,
+            # PPC Enforcement Rules Art. 8: preliminary report promptly, final
+            # report within 30 days (60 days for leaks caused for a wrongful
+            # purpose). The 30-day figure is modeled.
+            "breach_notification_days": 30,
+            "dpia_required": False,
+            "dpo_required": False,
+        },
     }
 
     @classmethod
@@ -245,15 +274,23 @@ class RegulationFramework:
         violation = False
         reason = ""
 
-        if action == "data_access":
-            if requirement.get("right_to_access"):
-                violation = details.get("access_time_days", 0) > 30
-                reason = "Access request not responded within 30 days"
-
-        elif action == "data_deletion":
-            if requirement.get("right_to_deletion"):
-                violation = details.get("deletion_time_days", 0) > 30
-                reason = "Deletion request not completed within 30 days"
+        if action in ("data_access", "data_deletion"):
+            # Per-regulation response periods live in dsr.py with their
+            # statutory citations. This day-count form is a quick check; the
+            # DSR tracker uses exact calendar dates (GDPR counts in months).
+            request_type = "access" if action == "data_access" else "deletion"
+            if requirement.get(f"right_to_{request_type}"):
+                rule = get_deadline(regulation.value, request_type)
+                allowed = rule.nominal_days
+                if details.get("extended") and rule.extension:
+                    allowed += rule.extension * 30 if rule.extension_unit == "months" else rule.extension
+                violation = details.get(f"{request_type}_time_days", 0) > allowed
+                period = f"{rule.period} {rule.unit}" if rule.unit == "months" else f"{allowed} days"
+                kind = "statutory" if rule.statutory else "policy"
+                reason = (
+                    f"{request_type.capitalize()} request not completed within {period} "
+                    f"({kind} deadline, {rule.citation})"
+                )
 
         elif action == "consent":
             if requirement.get("consent_required"):
@@ -280,6 +317,13 @@ class RegulationFramework:
                     "has_explicit_consent", False
                 )
                 reason = "Targeted ad served without consent"
+            elif requirement.get("third_party_consent_required"):
+                violation = (
+                    bool(details.get("targeted_ad"))
+                    and bool(details.get("third_party_share"))
+                    and not details.get("has_explicit_consent", False)
+                )
+                reason = "Viewing data shared with a third-party ad partner without consent"
 
         elif action == "dpia":
             if requirement.get("dpia_required"):
@@ -343,12 +387,8 @@ class ComplianceChecker:
             "login": "consent",
             # Ad events: targeting rules (consent or opt-out, per regulation)
             "ad_impression": "ad_targeting",
-            # Data-subject request events
-            "user_data_access": "data_access",
-            "user_data_deletion": "data_deletion",
-            "user_consent_change": "consent",
-            "breach_detected": "breach_notification",
-            "data_export": "data_portability",
+            # Data subject requests (dsr_*) are not mapped here: their
+            # deadlines depend on time, so dsr.py tracks them as requests.
         }
         return mapping.get(event_type)
 

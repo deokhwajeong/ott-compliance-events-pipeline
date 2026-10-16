@@ -6,7 +6,7 @@ addresses come from the RFC 5737 documentation ranges, which never belong to
 real users.
 
 Usage:
-    python src/scripts/seed_demo.py --base-url http://127.0.0.1:8101 --events 240
+    python src/scripts/seed_demo.py --base-url http://127.0.0.1:8101 --events 240 --dsr 40
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ REGIONS = {
     "EU": (6, True, 0.75),
     "CA": (10, False, 0.92),
     "BR": (10, False, 0.90),
-    "JP": (8, False, 1.00),
+    "JP": (8, False, 0.85),
 }
 
 PLAYBACK = ["play", "play", "play", "pause", "seek", "stop"]
@@ -53,6 +53,9 @@ def make_event(rng: random.Random, n: int, now: datetime) -> dict:
         event_type = "ad_impression"
         extra["targeted"] = rng.random() < 0.6
         extra["gpc"] = region == "US" and rng.random() < 0.5
+        # Whether the ad call shares viewer data with a third-party ad partner
+        # (relevant to APPI Art. 27 / Art. 31 in Japan).
+        extra["third_party"] = rng.random() < 0.5
     elif roll < 0.17:
         event_type = rng.choice(["error", "login_failed"])
     elif roll < 0.22:
@@ -115,6 +118,72 @@ def risky_patterns(start: int, now: datetime) -> list[dict]:
             }
         )
         n += 1
+    # A Japanese viewer's data passed to a third-party ad partner without consent.
+    events.append(
+        {
+            "event_id": f"evt-{n:05d}",
+            "user_id": "sub-0950",
+            "device_id": "tv-0950",
+            "content_id": "title-021",
+            "event_type": "ad_impression",
+            "timestamp": iso(now - timedelta(minutes=20)),
+            "region": "JP",
+            "is_eu": False,
+            "has_consent": False,
+            "ip_address": "192.0.2.150",
+            "subscription_plan": "basic",
+            "extra_metadata": {"targeted": True, "third_party": True},
+        }
+    )
+    return events
+
+
+def dsr_events(rng: random.Random, count: int, now: datetime) -> list[dict]:
+    """Synthetic data subject requests as receipt, extension and completion events.
+
+    Most requests close within a couple of weeks, some get an extension notice
+    (a few of them too late to count), and a tail stays open or closes late, so
+    the deadline rules in src/app/dsr.py have something to catch.
+    """
+    events = []
+    for i in range(count):
+        user = rng.randint(1, 60)
+        region = home_region(user)
+        request_id = f"dsr-{i + 1:04d}"
+        kind = "dsr_deletion_request" if rng.random() < 0.6 else "dsr_access_request"
+        received = now - timedelta(days=rng.uniform(1, 75), hours=rng.randint(0, 23))
+        base = {
+            "user_id": f"sub-{user:04d}",
+            "device_id": f"tv-{user:04d}",
+            "content_id": "n/a",
+            "region": region,
+            "is_eu": REGIONS[region][1],
+            "has_consent": True,
+            "ip_address": f"{rng.choice(DOC_NETS)}.{rng.randint(1, 254)}",
+        }
+
+        def ev(event_type: str, ts: datetime, n: int, _base=base, _rid=request_id) -> dict:
+            return {
+                **_base,
+                "event_id": f"{_rid}-{n}",
+                "event_type": event_type,
+                "timestamp": iso(ts),
+                "extra_metadata": {"request_id": _rid},
+            }
+
+        events.append(ev(kind, received, 1))
+        if rng.random() < 0.18:
+            # Usually inside the first period; occasionally sent too late to count.
+            noticed = received + timedelta(
+                days=rng.uniform(5, 26) if rng.random() < 0.8 else rng.uniform(32, 48)
+            )
+            if noticed < now:
+                events.append(ev("dsr_extension", noticed, 2))
+        if rng.random() < 0.75:
+            completed = received + timedelta(days=min(rng.triangular(1, 50, 9), 80))
+            if completed < now:
+                events.append(ev("dsr_completed", completed, 3))
+    events.sort(key=lambda e: e["timestamp"])
     return events
 
 
@@ -123,6 +192,7 @@ def main() -> None:
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--events", type=int, default=240)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--dsr", type=int, default=40, help="number of data subject requests")
     parser.add_argument("--username", default="admin")
     parser.add_argument("--password", default="admin123")
     args = parser.parse_args()
@@ -131,6 +201,7 @@ def main() -> None:
     now = datetime.now(UTC)
     events = [make_event(rng, i, now) for i in range(args.events)]
     events += risky_patterns(args.events, now)
+    events += dsr_events(random.Random(args.seed + 1), args.dsr, now)
 
     s = requests.Session()
     accepted = 0
@@ -149,6 +220,8 @@ def main() -> None:
     print(f"processed {len(processed)} events")
     summary = s.get(f"{args.base_url}/compliance/summary", headers=headers, timeout=10).json()
     print("risk summary:", summary)
+    dsr = s.get(f"{args.base_url}/api/v1/dsr", headers=headers, timeout=10).json()
+    print("data subject requests:", dsr["summary"]["by_status"])
 
 
 if __name__ == "__main__":
