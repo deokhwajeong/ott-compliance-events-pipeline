@@ -1,10 +1,10 @@
 """Automatic Compliance Report Generation"""
 
-import logging
-from datetime import datetime, timedelta
-from typing import Optional, List
-from dataclasses import dataclass
 import json
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ComplianceMetrics:
     """Compliance metrics"""
+
     regulation: str
     total_violations: int
     critical_violations: int
@@ -27,6 +28,7 @@ class ComplianceMetrics:
 @dataclass
 class AnomalyMetrics:
     """Anomaly detection metrics"""
+
     total_anomalies: int
     high_risk_anomalies: int
     medium_risk_anomalies: int
@@ -39,31 +41,32 @@ class AnomalyMetrics:
 @dataclass
 class ComplianceReport:
     """Compliance report"""
+
     report_id: str
     report_date: str
     period_start: str
     period_end: str
-    
+
     # GDPR metrics
     gdpr_metrics: Optional[ComplianceMetrics] = None
-    
+
     # CCPA metrics
     ccpa_metrics: Optional[ComplianceMetrics] = None
-    
+
     # Anomaly detection metrics
     anomaly_metrics: Optional[AnomalyMetrics] = None
-    
+
     # Event statistics
     total_events: int = 0
     processed_events: int = 0
     failed_events: int = 0
-    
+
     # Key findings
     key_findings: List[str] = None
-    
+
     # Recommendations
     recommendations: List[str] = None
-    
+
     def to_dict(self):
         """Convert to dictionary"""
         return {
@@ -78,13 +81,13 @@ class ComplianceReport:
             "processed_events": self.processed_events,
             "failed_events": self.failed_events,
             "key_findings": self.key_findings or [],
-            "recommendations": self.recommendations or []
+            "recommendations": self.recommendations or [],
         }
-    
+
     def to_json(self):
         """Convert to JSON string"""
         return json.dumps(self.to_dict(), indent=2)
-    
+
     def to_html(self):
         """Generate HTML report"""
         html = f"""
@@ -99,7 +102,7 @@ class ComplianceReport:
         h1 {{ color: #333; border-bottom: 3px solid #007bff; padding-bottom: 10px; }}
         h2 {{ color: #0056b3; margin-top: 30px; }}
         .metrics-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0; }}
-        .metric-card {{ 
+        .metric-card {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 20px;
@@ -112,7 +115,7 @@ class ComplianceReport:
         .metric-label {{ font-size: 12px; opacity: 0.9; }}
         .metric-value {{ font-size: 32px; font-weight: bold; margin: 10px 0; }}
         .metric-detail {{ font-size: 12px; opacity: 0.8; }}
-        .finding {{ 
+        .finding {{
             background-color: #fff3cd;
             border-left: 4px solid #ffc107;
             padding: 12px;
@@ -142,13 +145,19 @@ class ComplianceReport:
         <p>Report ID: {self.report_id}</p>
         <p>Generated: {self.report_date}</p>
         <p>Period: {self.period_start} ~ {self.period_end}</p>
-        
+
         <h2>📈 Key Metrics</h2>
         <div class="metrics-grid">
 """
-        
+
         if self.gdpr_metrics:
-            score_class = "score-good" if self.gdpr_metrics.compliance_score >= 90 else "score-warning" if self.gdpr_metrics.compliance_score >= 70 else "score-danger"
+            score_class = (
+                "score-good"
+                if self.gdpr_metrics.compliance_score >= 90
+                else "score-warning"
+                if self.gdpr_metrics.compliance_score >= 70
+                else "score-danger"
+            )
             html += f"""
             <div class="metric-card gdpr">
                 <div class="metric-label">GDPR Compliance Score</div>
@@ -157,9 +166,15 @@ class ComplianceReport:
                 <div class="metric-detail">Trend: {self.gdpr_metrics.trend}</div>
             </div>
 """
-        
+
         if self.ccpa_metrics:
-            score_class = "score-good" if self.ccpa_metrics.compliance_score >= 90 else "score-warning" if self.ccpa_metrics.compliance_score >= 70 else "score-danger"
+            score_class = (
+                "score-good"
+                if self.ccpa_metrics.compliance_score >= 90
+                else "score-warning"
+                if self.ccpa_metrics.compliance_score >= 70
+                else "score-danger"
+            )
             html += f"""
             <div class="metric-card ccpa">
                 <div class="metric-label">CCPA Compliance Score</div>
@@ -168,7 +183,7 @@ class ComplianceReport:
                 <div class="metric-detail">Trend: {self.ccpa_metrics.trend}</div>
             </div>
 """
-        
+
         if self.anomaly_metrics:
             html += f"""
             <div class="metric-card anomaly">
@@ -178,7 +193,7 @@ class ComplianceReport:
                 <div class="metric-detail">Accuracy: {self.anomaly_metrics.detection_accuracy:.1f}%</div>
             </div>
 """
-        
+
         html += f"""
             <div class="metric-card">
                 <div class="metric-label">Event Processing</div>
@@ -188,21 +203,21 @@ class ComplianceReport:
             </div>
         </div>
 """
-        
+
         if self.key_findings:
             html += """
         <h2>🔍 Key Findings</h2>
 """
             for finding in self.key_findings:
                 html += f'        <div class="finding">{finding}</div>\n'
-        
+
         if self.recommendations:
             html += """
         <h2>💡 Recommendations</h2>
 """
             for rec in self.recommendations:
                 html += f'        <div class="recommendation">{rec}</div>\n'
-        
+
         html += """
         <div class="footer">
             <p>This report was automatically generated.</p>
@@ -217,16 +232,16 @@ class ComplianceReport:
 
 class ReportGenerator:
     """Compliance report generator"""
-    
+
     def __init__(self):
         self.logger = logger
-    
+
     def generate_daily_report(self) -> ComplianceReport:
         """Generate daily report"""
         report_id = f"daily_{datetime.utcnow().strftime('%Y%m%d')}"
-        period_start = (datetime.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')
-        period_end = datetime.utcnow().strftime('%Y-%m-%d')
-        
+        period_start = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+        period_end = datetime.utcnow().strftime("%Y-%m-%d")
+
         return ComplianceReport(
             report_id=report_id,
             report_date=datetime.utcnow().isoformat(),
@@ -236,15 +251,15 @@ class ReportGenerator:
             ccpa_metrics=self._generate_ccpa_metrics(),
             anomaly_metrics=self._generate_anomaly_metrics(),
             key_findings=self._generate_findings(),
-            recommendations=self._generate_recommendations()
+            recommendations=self._generate_recommendations(),
         )
-    
+
     def generate_weekly_report(self) -> ComplianceReport:
         """Generate weekly report"""
         report_id = f"weekly_{datetime.utcnow().strftime('%Y%W')}"
-        period_start = (datetime.utcnow() - timedelta(days=7)).strftime('%Y-%m-%d')
-        period_end = datetime.utcnow().strftime('%Y-%m-%d')
-        
+        period_start = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
+        period_end = datetime.utcnow().strftime("%Y-%m-%d")
+
         return ComplianceReport(
             report_id=report_id,
             report_date=datetime.utcnow().isoformat(),
@@ -254,17 +269,17 @@ class ReportGenerator:
             ccpa_metrics=self._generate_ccpa_metrics(),
             anomaly_metrics=self._generate_anomaly_metrics(),
             key_findings=self._generate_findings(),
-            recommendations=self._generate_recommendations()
+            recommendations=self._generate_recommendations(),
         )
-    
+
     def generate_monthly_report(self) -> ComplianceReport:
         """Generate monthly report"""
         today = datetime.utcnow()
         first_day = today.replace(day=1)
-        period_start = first_day.strftime('%Y-%m-%d')
-        period_end = today.strftime('%Y-%m-%d')
+        period_start = first_day.strftime("%Y-%m-%d")
+        period_end = today.strftime("%Y-%m-%d")
         report_id = f"monthly_{today.strftime('%Y%m')}"
-        
+
         return ComplianceReport(
             report_id=report_id,
             report_date=datetime.utcnow().isoformat(),
@@ -274,9 +289,9 @@ class ReportGenerator:
             ccpa_metrics=self._generate_ccpa_metrics(),
             anomaly_metrics=self._generate_anomaly_metrics(),
             key_findings=self._generate_findings(),
-            recommendations=self._generate_recommendations()
+            recommendations=self._generate_recommendations(),
         )
-    
+
     def _generate_gdpr_metrics(self) -> ComplianceMetrics:
         """Generate GDPR metrics"""
         return ComplianceMetrics(
@@ -289,9 +304,9 @@ class ReportGenerator:
             violation_rate=0.5,
             compliance_score=95.0,
             trend="improving",
-            remediation_rate=100.0
+            remediation_rate=100.0,
         )
-    
+
     def _generate_ccpa_metrics(self) -> ComplianceMetrics:
         """Generate CCPA metrics"""
         return ComplianceMetrics(
@@ -304,9 +319,9 @@ class ReportGenerator:
             violation_rate=0.25,
             compliance_score=97.0,
             trend="stable",
-            remediation_rate=100.0
+            remediation_rate=100.0,
         )
-    
+
     def _generate_anomaly_metrics(self) -> AnomalyMetrics:
         """Generate anomaly detection metrics"""
         return AnomalyMetrics(
@@ -316,25 +331,25 @@ class ReportGenerator:
             low_risk_anomalies=8,
             false_positive_rate=5.0,
             detection_accuracy=94.5,
-            avg_risk_score=0.45
+            avg_risk_score=0.45,
         )
-    
+
     def _generate_findings(self) -> List[str]:
         """Generate key findings"""
         return [
             "GDPR compliance rate improved to 95%, up 3% from previous month.",
             "Anomaly detection accuracy reached 94.5%.",
             "Total 3 compliance violations detected in the system, all resolved.",
-            "Data protection policy update successfully applied."
+            "Data protection policy update successfully applied.",
         ]
-    
+
     def _generate_recommendations(self) -> List[str]:
         """Generate recommendations"""
         return [
             "Immediate action required for 1 unresolved CCPA violation.",
             "Conduct deep investigation on 2 high-risk anomaly detections.",
             "Establish regular backup policy for audit log data.",
-            "Regular review of data access permissions recommended."
+            "Regular review of data access permissions recommended.",
         ]
 
 

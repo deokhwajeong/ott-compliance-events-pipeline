@@ -1,15 +1,15 @@
 """Multi-country compliance regulations support"""
 
 import logging
-from typing import Dict, List, Any
 from enum import Enum
-from datetime import datetime
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
 
 class Regulation(str, Enum):
     """Supported compliance regulations"""
+
     GDPR = "GDPR"  # EU - General Data Protection Regulation
     CCPA = "CCPA"  # California - California Consumer Privacy Act
     PIPL = "PIPL"  # China - Personal Information Protection Law
@@ -24,22 +24,55 @@ class Regulation(str, Enum):
 
 class RegulationFramework:
     """Framework for multi-country compliance rules"""
-    
-    # Region to regulations mapping
+
+    # Region to regulations mapping. Region codes are ISO 3166 country codes,
+    # plus "EU" for traffic that is only known to be EU-originated. US traffic
+    # is checked against CCPA as the strictest common US state baseline.
     REGION_REGULATIONS = {
         "EU": [Regulation.GDPR],
+        **{
+            cc: [Regulation.GDPR]
+            for cc in (
+                "AT",
+                "BE",
+                "BG",
+                "HR",
+                "CY",
+                "CZ",
+                "DK",
+                "EE",
+                "FI",
+                "FR",
+                "DE",
+                "GR",
+                "HU",
+                "IE",
+                "IT",
+                "LV",
+                "LT",
+                "LU",
+                "MT",
+                "NL",
+                "PL",
+                "PT",
+                "RO",
+                "SK",
+                "SI",
+                "ES",
+                "SE",
+            )
+        },
         "US": [Regulation.CCPA],
-        "CA": [Regulation.CCPA],  # California
+        "CA": [Regulation.PIPEDA],  # Canada (ISO code), not California
         "CN": [Regulation.PIPL],
         "TH": [Regulation.PDPA],
         "BR": [Regulation.LGPD],
         "ZA": [Regulation.POPIA],
         "AU": [Regulation.APRA],
-        "CA_FEDERAL": [Regulation.PIPEDA],
         "TR": [Regulation.KVKK],
         "SG": [Regulation.PDPL],
     }
-    
+
     # Regulation requirements
     REGULATION_REQUIREMENTS = {
         Regulation.GDPR: {
@@ -54,7 +87,11 @@ class RegulationFramework:
             "max_retention_years": 7,
         },
         Regulation.CCPA: {
-            "consent_required": True,
+            # CCPA/CPRA is an opt-out regime: no prior consent for ordinary
+            # processing, but opt-out signals (e.g. GPC) must be honored for
+            # sale/sharing, which includes cross-context behavioral ads.
+            "consent_required": False,
+            "honor_opt_out_signals": True,
             "data_minimization": True,
             "right_to_deletion": True,
             "right_to_access": True,
@@ -153,34 +190,31 @@ class RegulationFramework:
             "max_retention_years": 5,
         },
     }
-    
+
     @classmethod
     def get_regulations_for_region(cls, region_code: str) -> List[Regulation]:
         """Get applicable regulations for a region"""
         return cls.REGION_REGULATIONS.get(region_code, [])
-    
+
     @classmethod
     def get_regulation_requirements(cls, regulation: Regulation) -> Dict[str, Any]:
         """Get requirements for a specific regulation"""
         return cls.REGULATION_REQUIREMENTS.get(regulation, {})
-    
+
     @classmethod
-    def get_strictest_requirements(
-        cls, 
-        regulations: List[Regulation]
-    ) -> Dict[str, Any]:
+    def get_strictest_requirements(cls, regulations: List[Regulation]) -> Dict[str, Any]:
         """
         Get the strictest requirements across multiple regulations.
         Used when a user is in multiple jurisdictions.
         """
         if not regulations:
             return {}
-        
+
         requirements = {}
-        
+
         for regulation in regulations:
             req = cls.get_regulation_requirements(regulation)
-            
+
             for key, value in req.items():
                 if key not in requirements:
                     requirements[key] = value
@@ -191,19 +225,16 @@ class RegulationFramework:
                     # Numeric fields: smaller (sooner) is stricter
                     elif isinstance(value, int):
                         requirements[key] = min(requirements[key], value)
-        
+
         return requirements
-    
+
     @classmethod
     def check_violation(
-        cls,
-        action: str,
-        regulation: Regulation,
-        details: Dict[str, Any] = None
+        cls, action: str, regulation: Regulation, details: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """
         Check if an action violates a specific regulation.
-        
+
         Args:
             action: Action type (e.g., 'data_access', 'data_deletion', 'consent_check')
             regulation: Regulation to check against
@@ -213,36 +244,48 @@ class RegulationFramework:
         requirement = cls.get_regulation_requirements(regulation)
         violation = False
         reason = ""
-        
+
         if action == "data_access":
             if requirement.get("right_to_access"):
                 violation = details.get("access_time_days", 0) > 30
                 reason = "Access request not responded within 30 days"
-        
+
         elif action == "data_deletion":
             if requirement.get("right_to_deletion"):
                 violation = details.get("deletion_time_days", 0) > 30
                 reason = "Deletion request not completed within 30 days"
-        
+
         elif action == "consent":
             if requirement.get("consent_required"):
                 violation = not details.get("has_explicit_consent", False)
                 reason = "Explicit consent required but not obtained"
-        
+
         elif action == "breach_notification":
-            violation = details.get("notification_time_days", 0) > requirement.get("breach_notification_days", 30)
+            violation = details.get("notification_time_days", 0) > requirement.get(
+                "breach_notification_days", 30
+            )
             reason = f"Breach notification exceeded {requirement.get('breach_notification_days')} day limit"
-        
+
         elif action == "data_retention":
             max_years = requirement.get("max_retention_years", 7)
             violation = details.get("retention_years", 0) > max_years
             reason = f"Data retention exceeds {max_years} year limit"
-        
+
+        elif action == "ad_targeting":
+            if requirement.get("honor_opt_out_signals"):
+                violation = bool(details.get("gpc_signal")) and bool(details.get("targeted_ad"))
+                reason = "Targeted ad served despite a Global Privacy Control opt-out signal"
+            elif requirement.get("consent_required"):
+                violation = bool(details.get("targeted_ad")) and not details.get(
+                    "has_explicit_consent", False
+                )
+                reason = "Targeted ad served without consent"
+
         elif action == "dpia":
             if requirement.get("dpia_required"):
                 violation = not details.get("has_dpia", False)
                 reason = "Data Protection Impact Assessment required but not completed"
-        
+
         return {
             "violation": violation,
             "reason": reason,
@@ -253,52 +296,54 @@ class RegulationFramework:
 
 class ComplianceChecker:
     """Check events for multi-country compliance"""
-    
+
     def __init__(self):
         self.violation_log = []
-    
+
     def evaluate_event_compliance(
-        self,
-        user_id: str,
-        event_type: str,
-        region: str,
-        event_details: Dict[str, Any]
+        self, user_id: str, event_type: str, region: str, event_details: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         Evaluate an event against all applicable regulations.
         """
         regulations = RegulationFramework.get_regulations_for_region(region)
-        
+
         violations = []
         risk_score = 0.0
-        
+
+        # Determine action based on event type
+        action = self._map_event_to_action(event_type)
+
         for regulation in regulations:
-            # Determine action based on event type
-            action = self._map_event_to_action(event_type)
-            
             if action:
-                result = RegulationFramework.check_violation(
-                    action,
-                    regulation,
-                    event_details
-                )
-                
+                result = RegulationFramework.check_violation(action, regulation, event_details)
+
                 if result["violation"]:
                     violations.append(result)
                     risk_score += 0.5
-        
+
         risk_score = min(1.0, risk_score)
-        
+
         return {
             "compliant": len(violations) == 0,
             "violations": violations,
             "applicable_regulations": [r.value for r in regulations],
             "compliance_risk_score": risk_score,
         }
-    
+
     def _map_event_to_action(self, event_type: str) -> str:
         """Map event type to compliance action"""
         mapping = {
+            # Viewing and session events: processing of personal data that
+            # needs consent where the regulation requires opt-in consent
+            "play": "consent",
+            "pause": "consent",
+            "stop": "consent",
+            "seek": "consent",
+            "login": "consent",
+            # Ad events: targeting rules (consent or opt-out, per regulation)
+            "ad_impression": "ad_targeting",
+            # Data-subject request events
             "user_data_access": "data_access",
             "user_data_deletion": "data_deletion",
             "user_consent_change": "consent",
@@ -306,11 +351,11 @@ class ComplianceChecker:
             "data_export": "data_portability",
         }
         return mapping.get(event_type)
-    
+
     def get_regulation_summary(self, regulations: List[str]) -> Dict[str, Any]:
         """Get summary of regulations"""
         reg_objs = [Regulation[r] for r in regulations if r in Regulation.__members__]
-        
+
         return {
             "regulations": [r.value for r in reg_objs],
             "strictest_requirements": RegulationFramework.get_strictest_requirements(reg_objs),
