@@ -215,3 +215,6 @@ weekly_report.*
 monthly_report.*
 *.mmdb
 .vscode/
+
+# Static demo build output
+demo/dist/

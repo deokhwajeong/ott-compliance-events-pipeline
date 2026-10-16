@@ -4,6 +4,21 @@ A FastAPI service that checks streaming-platform events (playback, login, ad imp
 
 ![Compliance dashboard with synthetic demo data](docs/images/dashboard.png)
 
+## Live demo
+
+**[deokhwajeong.github.io/demos/ott-compliance/](https://deokhwajeong.github.io/demos/ott-compliance/)**: a static, no-backend dashboard for this pipeline. It shows event volume by market, consent coverage, rule violations by jurisdiction, deletion requests against the SLA, and an event drill-down table with filters. A "Simulate an event" panel runs a browser port of the regulation rules so you can watch a GDPR or CCPA violation get flagged, and the page checks that port against the Python results (it agrees on every recorded event).
+
+The numbers are not made up in JavaScript. `demo/export_fixture.py` runs the real app in process: it generates synthetic events with the `seed_demo.py` generator, posts them to `POST /events`, processes them with `POST /process/drain` (against a throwaway SQLite file in a temp directory), checks a synthetic deletion-request queue with `RegulationFramework.check_violation("data_deletion")`, and writes `demo/site/data/fixture.json`. The page only reads that file.
+
+```bash
+pip install -r requirements-dev.txt
+demo/build.sh                      # re-export the fixture and assemble the site in demo/dist
+SKIP_EXPORT=1 demo/build.sh out/   # reuse the committed fixture, write to out/
+python -m http.server -d demo/dist 8080   # then open http://127.0.0.1:8080/
+```
+
+Source: `demo/site/` (plain HTML, CSS and JavaScript with hand-written SVG charts; no build step and no CDN).
+
 ## The problem
 
 An OTT service that ships in many countries cannot apply one privacy rule set everywhere. The same `play` or `ad_impression` event means different things depending on where the viewer is:
@@ -136,6 +151,7 @@ src/app/
   audit_log.py, report_generator.py, advanced_analytics.py, metrics.py, alerting.py
   templates/dashboard.html   Dependency-free dashboard (no CDN needed)
 src/scripts/seed_demo.py     Synthetic data generator (documentation-range IPs, generated IDs)
+demo/                        Static live demo: export_fixture.py, build.sh, site/ (HTML, CSS, JS, data/fixture.json)
 tests/                       pytest suite
 alembic/                     Database migrations
 grafana/, prometheus.yml     Monitoring configuration for docker-compose
