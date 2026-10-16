@@ -1,103 +1,39 @@
+# API plus optional Redis cache and Prometheus/Grafana monitoring.
+# The API alone runs fine without any of the other services.
 services:
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.0
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+  app:
+    build: .
     ports:
-      - "2181:2181"
-    networks:
-      - ott-network
-
-  kafka:
-    image: confluentinc/cp-kafka:7.6.0
+      - "8000:8000"
+    environment:
+      REDIS_HOST: redis
+    volumes:
+      - app_data:/app/data
     depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      KAFKA_LOG_RETENTION_HOURS: 168
-    networks:
-      - ott-network
-    healthcheck:
-      test: kafka-broker-api-versions.sh --bootstrap-server localhost:9092
-      interval: 5s
-      timeout: 10s
-      retries: 5
+      - redis
 
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    depends_on:
-      - kafka
-    ports:
-      - "8080:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: ott-cluster
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
-    networks:
-      - ott-network
+  redis:
+    image: redis:7-alpine
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.53.0
     ports:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=30d'
-    networks:
-      - ott-network
     depends_on:
       - app
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.1.0
     ports:
       - "3000:3000"
     environment:
       GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_INSTALL_PLUGINS: grafana-piechart-panel
     volumes:
-      - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
-    networks:
-      - ott-network
     depends_on:
       - prometheus
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      DATABASE_URL: sqlite:///./ott_compliance.db
-    volumes:
-      - ./src:/app/src
-      - ./ott_compliance.db:/app/ott_compliance.db
-    networks:
-      - ott-network
-    depends_on:
-      - kafka
-    command: uvicorn src.app.main:app --host 0.0.0.0 --port 8000 --reload
-
-networks:
-  ott-network:
-    driver: bridge
-
 volumes:
-  prometheus_data:
-  grafana_data:
+  app_data:
