@@ -16,7 +16,7 @@
   var DSR_STATUS = [
     { key: "on_time", label: "On time", color: "var(--good)" },
     { key: "at_risk", label: "At risk", color: "var(--warning)", light: true },
-    { key: "breached", label: "Breached", color: "var(--critical)" },
+    { key: "breached", label: "Deadline missed", color: "var(--critical)" },
     { key: "no_rule", label: "No rule pack", color: "var(--neutral)", light: true },
   ];
   var ACTION_LABELS = { consent: "Consent", ad_targeting: "Ad targeting" };
@@ -41,7 +41,9 @@
     var regs = regsFor(region);
     if (!regs.length) return "No rule pack";
     var req = RULES.requirements[regs[0]] || {};
-    return regs.join(", ") + (req.consent_required ? ", opt-in" : ", opt-out");
+    var model = req.consent_required ? "opt-in" : req.honor_opt_out_signals ? "opt-out" :
+      req.third_party_consent_required ? "purpose-based" : "notice";
+    return regs.join(", ") + ", " + model;
   }
   function requiresConsent(region) {
     return regsFor(region).some(function (r) { return (RULES.requirements[r] || {}).consent_required; });
@@ -82,6 +84,9 @@
       } else if (req.consent_required) {
         violation = !!d.targeted_ad && !d.has_explicit_consent;
         reason = "Targeted ad served without consent";
+      } else if (req.third_party_consent_required) {
+        violation = !!d.targeted_ad && !!d.third_party_share && !d.has_explicit_consent;
+        reason = "Viewing data shared with a third-party ad partner without consent";
       }
     }
     return { violation: violation, reason: reason, regulation: reg, action: action };
@@ -107,6 +112,7 @@
       if (!action) return;
       var r = checkViolation(action, reg, {
         has_explicit_consent: ev.consent, is_eu: ev.is_eu, gpc_signal: ev.gpc, targeted_ad: ev.targeted,
+        third_party_share: ev.third_party,
       });
       if (r.violation) violations.push(r);
     });
@@ -137,7 +143,7 @@
     });
   }
   function filteredDsr() {
-    return DATA.deletion_requests.filter(function (d) { return matchMarket(d.region, d.regulations); });
+    return DATA.data_subject_requests.filter(function (d) { return matchMarket(d.region, d.regulations); });
   }
 
   /* ---------- KPIs ---------- */
@@ -155,7 +161,7 @@
       { label: "Consent coverage", value: optIn.length ? pct(withConsent, optIn.length) + "%" : "n/a", sub: "in opt-in markets (" + fmt(optIn.length) + " events)" },
       { label: "Events with violations", value: fmt(violEvents.length), sub: fmt(findings) + " statutory findings" },
       { label: "High-risk events", value: fmt(high), sub: fmt(medium) + " medium" },
-      { label: "Deletion SLA breached", value: fmt(breached), sub: fmt(atRisk) + " at risk, " + fmt(dsr.length) + " requests" },
+      { label: "DSR deadlines missed", value: fmt(breached), sub: fmt(atRisk) + " at risk, " + fmt(dsr.length) + " requests" },
     ];
     $("kpis").innerHTML = tiles.map(function (t) {
       return '<div class="kpi"><div class="label">' + esc(t.label) + '</div><div class="value">' + esc(t.value) +
@@ -264,12 +270,13 @@
         market(r), consentModel(r),
         [{ value: b.c, color: optIn ? "var(--accent)" : "var(--accent-2)" }], b.n, p + "%",
         "<b>" + esc(market(r)) + "</b><br>" + b.c + " of " + b.n + " events with consent<br>" +
-          (optIn ? "Consent required before processing" : regsFor(r).length ? "Opt-out regime: consent not required" : "No regulation configured for this market")
+          (optIn ? "Consent required before processing" : !regsFor(r).length ? "No regulation configured for this market" :
+            /purpose-based/.test(consentModel(r)) ? "Purpose-based regime: consent needed for third-party sharing" : "Opt-out regime: consent not required")
       ));
     });
     var note = document.createElement("p");
     note.className = "note";
-    note.textContent = "Dark bars: markets where the rule pack requires opt-in consent. Light bars: opt-out or unconfigured markets.";
+    note.textContent = "Dark bars: markets where the rule pack requires opt-in consent. Light bars: opt-out, purpose-based or unconfigured markets.";
     host.appendChild(note);
   }
 
@@ -328,15 +335,16 @@
     host.innerHTML = "";
     var by = {};
     dsr.forEach(function (d) {
-      var k = d.regulations.length ? d.regulations.join(", ") : "None";
-      var b = by[k] || (by[k] = { n: 0, markets: {} });
+      var reg = d.regulations.length ? d.regulations.join(", ") : "None";
+      var k = reg + " " + d.type;
+      var b = by[k] || (by[k] = { n: 0, markets: {}, reg: reg, type: d.type });
       DSR_STATUS.forEach(function (s) { b[s.key] = b[s.key] || 0; });
       b[d.status] += 1; b.n += 1; b.markets[d.region] = 1;
     });
     Object.keys(by).sort(function (a, b) { return by[b].n - by[a].n; }).forEach(function (k) {
       var b = by[k];
       var mk = Object.keys(b.markets).join(", ");
-      host.appendChild(hrow(k, mk, DSR_STATUS.map(function (s) { return { value: b[s.key], color: s.color }; }), b.n, String(b.n),
+      host.appendChild(hrow(b.reg, b.type + ", " + mk, DSR_STATUS.map(function (s) { return { value: b[s.key], color: s.color }; }), b.n, String(b.n),
         "<b>" + esc(k) + "</b> (" + esc(mk) + ")<br>" + DSR_STATUS.map(function (s) {
           return '<i style="background:' + s.color + '"></i>' + s.label + ": " + b[s.key];
         }).join("<br>")));
@@ -348,12 +356,27 @@
         return b.elapsed_days - a.elapsed_days;
       });
     $("dsr-list").innerHTML = attention.length ? attention.map(function (d) {
-      var label = d.status === "breached" ? "Breached" : "At risk";
-      var detail = d.state === "open" ? "open, " + market(d.region) : "closed late, " + market(d.region);
-      return '<li><span class="pill ' + d.status + '">' + label + '</span><span class="who">' + esc(d.id) + " " + esc(d.user_id) +
-        "<small>" + esc(d.regulations.join(", ") || "no rule pack") + ", " + esc(detail) + '</small></span><span class="days">' +
+      var label = d.status === "breached" ? (d.state === "open" ? "Overdue" : "Late") : "At risk";
+      var detail = (d.state === "open" ? "open" : "closed") + ", due " + d.due + (d.extended ? " (extended)" : "") +
+        (d.late_extension ? ", extension sent too late" : "");
+      var basis = d.statutory ? "statutory" : "policy SLA";
+      return '<li title="' + esc(d.citation || "") + '"><span class="pill ' + d.status + '">' + label + '</span><span class="who">' + esc(d.id) + " " + esc(d.type) +
+        "<small>" + esc(d.regulations.join(", ") || "no rule pack") + " " + basis + ", " + esc(market(d.region)) + ", " + esc(detail) + '</small></span><span class="days">' +
         Math.floor(d.elapsed_days) + " / " + d.deadline_days + "d</span></li>";
     }).join("") : '<li class="muted">Nothing breached or at risk for this filter.</li>';
+    renderDeadlines();
+  }
+
+  function renderDeadlines() {
+    var host = $("dsr-rules");
+    if (!host || host.childElementCount) return;
+    function span(n, u) { return n ? n + " " + (u === "months" ? (n === 1 ? "month" : "months") : "days") : "none"; }
+    host.innerHTML = "<thead><tr><th>Regulation</th><th>Request</th><th>Deadline</th><th>Extension</th><th>Basis</th><th>Source</th></tr></thead><tbody>" +
+      RULES.dsr_deadlines.map(function (r) {
+        return "<tr><td>" + esc(r.regulation) + "</td><td>" + esc(r.request_type) + '</td><td class="num">' + esc(span(r.period, r.unit)) +
+          '</td><td class="num">' + esc(span(r.extension, r.extension_unit)) + "</td><td>" + (r.statutory ? "Statute" : '<span class="muted">Policy SLA</span>') +
+          '</td><td class="small" title="' + esc(r.note) + '">' + esc(r.citation) + "</td></tr>";
+      }).join("") + "</tbody>";
   }
 
   /* ---------- table ---------- */
@@ -415,7 +438,8 @@
     var items = [
       ["Subscriber", e.user], ["Device", e.device], ["Title", e.content], ["Plan", e.plan || "n/a"],
       ["Market", market(e.region) + " (" + consentModel(e.region) + ")"],
-      ["Signals", "consent " + (e.consent ? "yes" : "no") + ", GPC " + (e.gpc ? "on" : "off") + ", targeted " + (e.targeted ? "yes" : "no")],
+      ["Signals", "consent " + (e.consent ? "yes" : "no") + ", GPC " + (e.gpc ? "on" : "off") + ", targeted " + (e.targeted ? "yes" : "no") +
+        (e.type === "ad_impression" ? ", third-party " + (e.third_party ? "yes" : "no") : "")],
       ["Timestamp", e.ts], ["Pipeline score", e.score + " (" + e.risk + ")"],
     ];
     return '<tr class="detail"><td colspan="8"><dl class="detail-grid">' + items.map(function (i) {
@@ -433,12 +457,15 @@
       consent: $("s-consent").checked,
       targeted: type === "ad_impression" && $("s-targeted").checked,
       gpc: $("s-gpc").checked,
+      third_party: type === "ad_impression" && $("s-thirdparty").checked,
     };
   }
   function syncSimControls() {
     var ad = $("s-type").value === "ad_impression";
     $("s-targeted").disabled = !ad;
     $("s-targeted").parentElement.style.opacity = ad ? 1 : 0.5;
+    $("s-thirdparty").disabled = !ad;
+    $("s-thirdparty").parentElement.style.opacity = ad ? 1 : 0.5;
   }
   function runSim() {
     var ev = simEvent();
@@ -464,10 +491,13 @@
   function preset(p) {
     if (p === "gdpr") {
       $("s-region").value = "DE"; $("s-type").value = "play"; $("s-consent").checked = false;
-      $("s-gpc").checked = false; $("s-targeted").checked = false; $("s-plan").value = "basic";
+      $("s-gpc").checked = false; $("s-targeted").checked = false; $("s-thirdparty").checked = false; $("s-plan").value = "basic";
+    } else if (p === "appi") {
+      $("s-region").value = "JP"; $("s-type").value = "ad_impression"; $("s-consent").checked = false;
+      $("s-gpc").checked = false; $("s-targeted").checked = true; $("s-thirdparty").checked = true; $("s-plan").value = "basic";
     } else {
       $("s-region").value = "US"; $("s-type").value = "ad_impression"; $("s-consent").checked = true;
-      $("s-gpc").checked = true; $("s-targeted").checked = true; $("s-plan").value = "basic";
+      $("s-gpc").checked = true; $("s-targeted").checked = true; $("s-thirdparty").checked = false; $("s-plan").value = "basic";
     }
     syncSimControls();
     runSim();
@@ -538,7 +568,7 @@
     $("meta").innerHTML = [
       ["Generated", meta.generated_at.replace("T", " ").replace("Z", " UTC")],
       ["Events", meta.events_processed + " processed of " + meta.events_sent + " sent"],
-      ["Deletion requests", String(data.deletion_requests.length)],
+      ["Data subject requests", data.data_subject_requests.length + " (" + meta.dsr_events_processed + " DSR events)"],
       ["Seed", String(meta.seed)],
     ].map(function (r) { return "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd>"; }).join("");
     $("atrisk-days").textContent = meta.at_risk_window_days;
@@ -597,6 +627,7 @@
     $("s-type").addEventListener("change", syncSimControls);
     $("s-preset-gdpr").addEventListener("click", function () { preset("gdpr"); });
     $("s-preset-ccpa").addEventListener("click", function () { preset("ccpa"); });
+    $("s-preset-appi").addEventListener("click", function () { preset("appi"); });
     $("replay-btn").addEventListener("click", function () { if (replayTimer) stopReplay(); else startReplay(); });
     $("s-region").value = "DE";
     $("s-consent").checked = true;

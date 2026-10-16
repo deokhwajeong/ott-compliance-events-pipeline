@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>OTT Compliance Pipeline Demo</title>
-  <meta name="description" content="Interactive demo of the OTT Compliance Events Pipeline: per-market privacy rules, consent coverage, deletion request SLAs and flagged events, built from synthetic events processed by the real pipeline.">
+  <meta name="description" content="Interactive demo of the OTT Compliance Events Pipeline: per-market privacy rules, consent coverage, data subject request deadlines and flagged events, built from synthetic events processed by the real pipeline.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%231f6b62%22/%3E%3Cpath d=%22M9 17l5 5 9-11%22 stroke=%22%23fff%22 stroke-width=%223.5%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -19,7 +19,7 @@
     <div>
       <p class="eyebrow">Privacy operations dashboard</p>
       <h1>OTT Compliance Events Pipeline</h1>
-      <p class="lede">Streaming events (playback, login, ad impressions) checked against the privacy rules of the market they come from: GDPR, CCPA, PIPEDA, LGPD and more. Every number below was produced by the Python pipeline and exported to a static file.</p>
+      <p class="lede">Streaming events (playback, login, ad impressions) checked against the privacy rules of the market they come from: GDPR, CCPA, APPI, PIPEDA, LGPD and more, plus data subject request deadlines. Every number below was produced by the Python pipeline and exported to a static file.</p>
     </div>
     <dl class="meta" id="meta"></dl>
   </header>
@@ -74,8 +74,8 @@
 
       <article class="card span-2">
         <header class="card-head">
-          <h2>Deletion requests vs SLA</h2>
-          <p id="dsr-sub">Data-subject deletion requests checked against the deadline modeled in <code>regulations.py</code>.</p>
+          <h2>Data subject requests vs deadline</h2>
+          <p id="dsr-sub">Access and deletion requests ingested as <code>dsr_*</code> events, stored by the pipeline and checked against each regulation's response period (<code>src/app/dsr.py</code>, <code>GET /api/v1/dsr</code>).</p>
         </header>
         <div class="dsr">
           <div>
@@ -88,6 +88,13 @@
             <ul class="dsr-list" id="dsr-list"></ul>
           </div>
         </div>
+        <details class="dsr-rules">
+          <summary>Deadlines applied, with sources</summary>
+          <div class="table-wrap">
+            <table class="rules" id="dsr-rules"></table>
+          </div>
+          <p class="note">"Policy SLA" means the statute sets no fixed day count (for example APPI's "without delay") or the period is not modeled, so an internal 30-day target is tracked and never presented as a legal deadline. A portfolio model, not legal advice.</p>
+        </details>
       </article>
 
       <article class="card span-2 sim" id="simulate">
@@ -116,11 +123,13 @@
               <label class="check"><input type="checkbox" id="s-consent"> Has consent</label>
               <label class="check"><input type="checkbox" id="s-targeted"> Targeted ad</label>
               <label class="check"><input type="checkbox" id="s-gpc"> GPC opt-out signal</label>
+              <label class="check"><input type="checkbox" id="s-thirdparty"> Shared with third-party ad partner</label>
             </fieldset>
             <div class="sim-actions">
               <button type="submit" class="btn">Send through rules</button>
               <button type="button" class="btn-ghost" id="s-preset-gdpr">EU, no consent</button>
               <button type="button" class="btn-ghost" id="s-preset-ccpa">US ad, GPC on</button>
+              <button type="button" class="btn-ghost" id="s-preset-appi">JP ad, third-party share</button>
             </div>
           </form>
           <div class="sim-out" id="sim-out" aria-live="polite">
@@ -180,7 +189,7 @@
       <ol>
         <li><code>demo/export_fixture.py</code> generates synthetic subscribers, devices and titles with the same generator as <code>src/scripts/seed_demo.py</code> (IP addresses from RFC 5737 documentation ranges).</li>
         <li>Each event is posted to the real FastAPI app (<code>POST /events</code>), then processed with <code>POST /process/drain</code>: per-market regulation rules, consent and identifier checks, behavioral signals and the IsolationForest + LOF anomaly score.</li>
-        <li>Deletion requests are a synthetic queue checked with <code>RegulationFramework.check_violation("data_deletion")</code>. Requests within <span id="atrisk-days">7</span> days of the deadline are shown as at risk.</li>
+        <li>Data subject requests travel in the same stream as <code>dsr_access_request</code>, <code>dsr_deletion_request</code>, <code>dsr_extension</code> and <code>dsr_completed</code> events. The pipeline keeps one record per request, flags late completions (for example <code>gdpr_data_deletion_violation</code>), and <code>GET /api/v1/dsr</code> reports each request's deadline as of the export time. Open requests within <span id="atrisk-days">7</span> days of the deadline are shown as at risk.</li>
         <li>The results are written to <code>data/fixture.json</code>; this page only reads and filters that file. Rules are a model for engineering discussion, not legal advice.</li>
       </ol>
     </section>
