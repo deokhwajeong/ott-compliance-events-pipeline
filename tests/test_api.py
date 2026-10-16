@@ -80,3 +80,14 @@ def test_analytics_endpoints_respond(client, auth_headers):
         assert client.get(path, headers=auth_headers).status_code == 200, path
     r = client.post("/api/v1/ml/predict/violation?user_id=sub-api-2", headers=auth_headers)
     assert r.status_code == 200
+
+
+def test_daily_report_is_computed_from_stored_events(client, auth_headers, make_event):
+    client.post("/events", json=make_event(user_id="sub-rep-1", region="DE", is_eu=True, has_consent=False))
+    client.post("/process/drain", headers=auth_headers)
+    report = client.get("/api/v1/reports/daily", headers=auth_headers).json()
+    assert report["gdpr_metrics"]["total_violations"] >= 1
+    assert report["gdpr_metrics"]["events_in_scope"] >= report["gdpr_metrics"]["total_violations"]
+    assert report["total_events"] >= 1
+    html = client.get("/api/v1/reports/daily/html", headers=auth_headers)
+    assert html.status_code == 200 and "GDPR Compliance Score" in html.text

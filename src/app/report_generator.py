@@ -19,10 +19,10 @@ class ComplianceMetrics:
     high_violations: int
     medium_violations: int
     low_violations: int
-    violation_rate: float  # 0-100
-    compliance_score: float  # 0-100
-    trend: str  # "improving", "stable", "declining"
-    remediation_rate: float  # 0-100
+    violation_rate: float  # % of processed events in this regulation's markets
+    compliance_score: float  # 100 - violation_rate
+    trend: str  # vs the previous period of equal length: improving/stable/declining/n/a
+    events_in_scope: int = 0
 
 
 @dataclass
@@ -33,8 +33,6 @@ class AnomalyMetrics:
     high_risk_anomalies: int
     medium_risk_anomalies: int
     low_risk_anomalies: int
-    false_positive_rate: float  # 0-100
-    detection_accuracy: float  # 0-100
     avg_risk_score: float
 
 
@@ -190,7 +188,7 @@ class ComplianceReport:
                 <div class="metric-label">Anomaly Detection</div>
                 <div class="metric-value">{self.anomaly_metrics.total_anomalies}</div>
                 <div class="metric-detail">High Risk: {self.anomaly_metrics.high_risk_anomalies}</div>
-                <div class="metric-detail">Accuracy: {self.anomaly_metrics.detection_accuracy:.1f}%</div>
+                <div class="metric-detail">Avg risk score: {self.anomaly_metrics.avg_risk_score:.1f}</div>
             </div>
 """
 
@@ -231,126 +229,120 @@ class ComplianceReport:
 
 
 class ReportGenerator:
-    """Compliance report generator"""
+    """Builds compliance reports from processed events stored in the database."""
 
     def __init__(self):
         self.logger = logger
 
-    def generate_daily_report(self) -> ComplianceReport:
-        """Generate daily report"""
-        report_id = f"daily_{datetime.utcnow().strftime('%Y%m%d')}"
-        period_start = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
-        period_end = datetime.utcnow().strftime("%Y-%m-%d")
+    def generate_daily_report(self, db) -> ComplianceReport:
+        now = datetime.utcnow()
+        return self._build(db, f"daily_{now.strftime('%Y%m%d')}", now - timedelta(days=1), now)
 
-        return ComplianceReport(
-            report_id=report_id,
-            report_date=datetime.utcnow().isoformat(),
-            period_start=period_start,
-            period_end=period_end,
-            gdpr_metrics=self._generate_gdpr_metrics(),
-            ccpa_metrics=self._generate_ccpa_metrics(),
-            anomaly_metrics=self._generate_anomaly_metrics(),
-            key_findings=self._generate_findings(),
-            recommendations=self._generate_recommendations(),
+    def generate_weekly_report(self, db) -> ComplianceReport:
+        now = datetime.utcnow()
+        return self._build(db, f"weekly_{now.strftime('%Y%W')}", now - timedelta(days=7), now)
+
+    def generate_monthly_report(self, db) -> ComplianceReport:
+        now = datetime.utcnow()
+        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return self._build(db, f"monthly_{now.strftime('%Y%m')}", start, now)
+
+    # ------------------------------------------------------------------
+
+    def _rows(self, db, start: datetime, end: datetime):
+        from .models import ProcessedEvent, RawEvent
+
+        rows = (
+            db.query(ProcessedEvent, RawEvent)
+            .join(RawEvent, RawEvent.event_id == ProcessedEvent.event_id)
+            .filter(ProcessedEvent.processed_at >= start, ProcessedEvent.processed_at <= end)
+            .all()
         )
+        return [(p.risk_level, p.risk_score or 0.0, json.loads(p.flags or "[]"), r.region) for p, r in rows]
 
-    def generate_weekly_report(self) -> ComplianceReport:
-        """Generate weekly report"""
-        report_id = f"weekly_{datetime.utcnow().strftime('%Y%W')}"
-        period_start = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
-        period_end = datetime.utcnow().strftime("%Y-%m-%d")
+    def _regulation_metrics(self, regulation: str, rows, previous_rows) -> ComplianceMetrics:
+        from .regulations import RegulationFramework
 
-        return ComplianceReport(
-            report_id=report_id,
-            report_date=datetime.utcnow().isoformat(),
-            period_start=period_start,
-            period_end=period_end,
-            gdpr_metrics=self._generate_gdpr_metrics(),
-            ccpa_metrics=self._generate_ccpa_metrics(),
-            anomaly_metrics=self._generate_anomaly_metrics(),
-            key_findings=self._generate_findings(),
-            recommendations=self._generate_recommendations(),
-        )
+        def in_scope(region):
+            return regulation in [r.value for r in RegulationFramework.get_regulations_for_region(region)]
 
-    def generate_monthly_report(self) -> ComplianceReport:
-        """Generate monthly report"""
-        today = datetime.utcnow()
-        first_day = today.replace(day=1)
-        period_start = first_day.strftime("%Y-%m-%d")
-        period_end = today.strftime("%Y-%m-%d")
-        report_id = f"monthly_{today.strftime('%Y%m')}"
+        def rate(data):
+            scoped = [row for row in data if in_scope(row[3])]
+            bad = [row for row in scoped if any(f.startswith(regulation.lower() + "_") for f in row[2])]
+            return scoped, bad, (100.0 * len(bad) / len(scoped)) if scoped else 0.0
 
-        return ComplianceReport(
-            report_id=report_id,
-            report_date=datetime.utcnow().isoformat(),
-            period_start=period_start,
-            period_end=period_end,
-            gdpr_metrics=self._generate_gdpr_metrics(),
-            ccpa_metrics=self._generate_ccpa_metrics(),
-            anomaly_metrics=self._generate_anomaly_metrics(),
-            key_findings=self._generate_findings(),
-            recommendations=self._generate_recommendations(),
-        )
+        scoped, bad, violation_rate = rate(rows)
+        prev_scoped, _, prev_rate = rate(previous_rows)
+        if not scoped or not prev_scoped:
+            trend = "n/a"
+        elif violation_rate < prev_rate - 1:
+            trend = "improving"
+        elif violation_rate > prev_rate + 1:
+            trend = "declining"
+        else:
+            trend = "stable"
 
-    def _generate_gdpr_metrics(self) -> ComplianceMetrics:
-        """Generate GDPR metrics"""
         return ComplianceMetrics(
-            regulation="GDPR",
-            total_violations=2,
+            regulation=regulation,
+            total_violations=len(bad),
             critical_violations=0,
-            high_violations=1,
-            medium_violations=1,
-            low_violations=0,
-            violation_rate=0.5,
-            compliance_score=95.0,
-            trend="improving",
-            remediation_rate=100.0,
+            high_violations=sum(1 for row in bad if row[0] == "high"),
+            medium_violations=sum(1 for row in bad if row[0] == "medium"),
+            low_violations=sum(1 for row in bad if row[0] == "low"),
+            violation_rate=round(violation_rate, 2),
+            compliance_score=round(100.0 - violation_rate, 2),
+            trend=trend,
+            events_in_scope=len(scoped),
         )
 
-    def _generate_ccpa_metrics(self) -> ComplianceMetrics:
-        """Generate CCPA metrics"""
-        return ComplianceMetrics(
-            regulation="CCPA",
-            total_violations=1,
-            critical_violations=0,
-            high_violations=0,
-            medium_violations=1,
-            low_violations=0,
-            violation_rate=0.25,
-            compliance_score=97.0,
-            trend="stable",
-            remediation_rate=100.0,
-        )
-
-    def _generate_anomaly_metrics(self) -> AnomalyMetrics:
-        """Generate anomaly detection metrics"""
+    def _anomaly_metrics(self, rows) -> AnomalyMetrics:
+        anomalies = [row for row in rows if "ml_ensemble_anomaly" in row[2]]
         return AnomalyMetrics(
-            total_anomalies=15,
-            high_risk_anomalies=2,
-            medium_risk_anomalies=5,
-            low_risk_anomalies=8,
-            false_positive_rate=5.0,
-            detection_accuracy=94.5,
-            avg_risk_score=0.45,
+            total_anomalies=len(anomalies),
+            high_risk_anomalies=sum(1 for row in anomalies if row[0] == "high"),
+            medium_risk_anomalies=sum(1 for row in anomalies if row[0] == "medium"),
+            low_risk_anomalies=sum(1 for row in anomalies if row[0] == "low"),
+            avg_risk_score=round(sum(row[1] for row in anomalies) / len(anomalies), 2) if anomalies else 0.0,
         )
 
-    def _generate_findings(self) -> List[str]:
-        """Generate key findings"""
-        return [
-            "GDPR compliance rate improved to 95%, up 3% from previous month.",
-            "Anomaly detection accuracy reached 94.5%.",
-            "Total 3 compliance violations detected in the system, all resolved.",
-            "Data protection policy update successfully applied.",
-        ]
+    def _build(self, db, report_id: str, start: datetime, end: datetime) -> ComplianceReport:
+        rows = self._rows(db, start, end)
+        previous_rows = self._rows(db, start - (end - start), start)
+        gdpr = self._regulation_metrics("GDPR", rows, previous_rows)
+        ccpa = self._regulation_metrics("CCPA", rows, previous_rows)
+        anomaly = self._anomaly_metrics(rows)
+        high = sum(1 for row in rows if row[0] == "high")
 
-    def _generate_recommendations(self) -> List[str]:
-        """Generate recommendations"""
-        return [
-            "Immediate action required for 1 unresolved CCPA violation.",
-            "Conduct deep investigation on 2 high-risk anomaly detections.",
-            "Establish regular backup policy for audit log data.",
-            "Regular review of data access permissions recommended.",
+        findings = [
+            f"{len(rows)} events processed in the period; {high} rated high risk.",
+            f"GDPR: {gdpr.total_violations} violations across {gdpr.events_in_scope} events in scope "
+            f"({gdpr.violation_rate:.1f}%).",
+            f"CCPA: {ccpa.total_violations} violations across {ccpa.events_in_scope} events in scope "
+            f"({ccpa.violation_rate:.1f}%).",
+            f"{anomaly.total_anomalies} events carried the anomaly-detector flag.",
         ]
+        recommendations = []
+        if gdpr.total_violations:
+            recommendations.append("Review consent collection in GDPR markets with flagged playback events.")
+        if ccpa.total_violations:
+            recommendations.append("Check that the ad stack honors Global Privacy Control signals.")
+        if anomaly.high_risk_anomalies:
+            recommendations.append("Investigate high-risk events that the anomaly detector also flagged.")
+
+        return ComplianceReport(
+            report_id=report_id,
+            report_date=datetime.utcnow().isoformat(),
+            period_start=start.strftime("%Y-%m-%d"),
+            period_end=end.strftime("%Y-%m-%d"),
+            gdpr_metrics=gdpr,
+            ccpa_metrics=ccpa,
+            anomaly_metrics=anomaly,
+            total_events=len(rows),
+            processed_events=len(rows),
+            failed_events=0,
+            key_findings=findings,
+            recommendations=recommendations,
+        )
 
 
 # Global report generator instance
