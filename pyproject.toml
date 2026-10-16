@@ -1,0 +1,42 @@
+[project]
+name = "ott-compliance-events-pipeline"
+version = "0.2.0"
+description = "FastAPI service that checks OTT streaming events against per-market privacy rules and flags risky patterns."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Deokhwa Jeong" }]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",   # long lines are left to the formatter
+    "B008",   # FastAPI Depends() in argument defaults is idiomatic
+    "UP006", "UP035",  # typing.Dict/List kept in older modules
+    "UP045",  # Optional[X] kept in older modules
+    "UP042",  # (str, Enum) is fine
+    "B904",   # HTTPException re-raise style
+]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/env.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["src/scripts/*"]
