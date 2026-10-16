@@ -4,382 +4,264 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>OTT Compliance Dashboard</title>
-
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
-    :root{
-      --ivory: #f7f3e9;
-      --ink: #1f2937;
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --ink: #111827;
       --muted: #6b7280;
-      --card: #fffaf0;
-      --border: rgba(31,41,55,.10);
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --low: #16a34a;
+      --med: #d97706;
+      --high: #dc2626;
+      --none: #9ca3af;
     }
-    body{ background: var(--ivory); color: var(--ink); }
-    .card{
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: 0 10px 25px rgba(0,0,0,.05);
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
-    .pill{
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: .25rem .6rem;
-      font-size: .75rem;
-      color: var(--muted);
-      background: rgba(255,255,255,.6);
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 28px 24px 40px; }
+    header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+    h2 { font-size: 14px; margin: 0 0 12px; font-weight: 600; }
+    .sub { color: var(--muted); margin-top: 4px; }
+    .actions { display: flex; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; }
+    .btn, a.btn {
+      border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px;
+      padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; text-decoration: none;
+    }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .grid { display: grid; gap: 16px; margin-top: 20px; }
+    .kpis { grid-template-columns: repeat(4, 1fr); }
+    .two { grid-template-columns: 1fr 1fr; }
+    .wide { grid-template-columns: 1.35fr 1fr; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+    .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .kpi .value { font-size: 30px; font-weight: 650; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .kpi .hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .donut-row { display: flex; align-items: center; gap: 24px; }
+    .legend { display: grid; gap: 8px; }
+    .legend div { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .bars { display: grid; gap: 10px; }
+    .bar-row { display: grid; grid-template-columns: 210px 1fr 40px; gap: 10px; align-items: center; }
+    .bar-row .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .bar-track { background: #f1f5f9; border-radius: 4px; height: 10px; }
+    .bar { height: 10px; border-radius: 4px; background: var(--accent); }
+    .bar-row .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; padding: 0 10px 8px 0; border-bottom: 1px solid var(--line); }
+    td { padding: 8px 10px 8px 0; border-bottom: 1px solid #f1f2f4; vertical-align: top; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .tag { display: inline-block; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: 11px; margin: 0 4px 2px 0; color: #374151; background: #fafafa; }
+    .tag.reg { border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+    .muted { color: var(--muted); }
+    .risk { display: inline-block; min-width: 56px; text-align: center; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; }
+    .risk.low { background: #dcfce7; color: #166534; }
+    .risk.medium { background: #fef3c7; color: #92400e; }
+    .risk.high { background: #fee2e2; color: #991b1b; }
+    #login { max-width: 380px; margin: 60px auto; }
+    #login label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+    #login input { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+    #login .err { color: var(--high); font-size: 12px; min-height: 16px; margin-top: 8px; }
+    .hidden { display: none !important; }
+    @media (max-width: 900px) {
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      .two, .wide { grid-template-columns: 1fr; }
+      .bar-row { grid-template-columns: 120px 1fr 32px; }
     }
   </style>
 </head>
-
-<body class="min-h-screen">
-  <div class="max-w-6xl mx-auto px-6 py-10">
-    <!-- Login Section -->
-    <div id="login-section" class="card p-6 mb-6" style="display: none;">
-      <h2 class="text-xl font-semibold mb-4">Admin Login</h2>
-      <form id="login-form" class="space-y-4">
-        <div>
-          <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
-          <input type="text" id="username" name="username" required
-                 class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-        </div>
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-          <input type="password" id="password" name="password" required
-                 class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-        </div>
-        <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-          Login
-        </button>
-      </form>
-      <div id="login-message" class="mt-4 text-sm text-red-600"></div>
-    </div>
-
-    <!-- User Info -->
-    <div id="user-info" class="flex items-center justify-between mb-6" style="display: none;">
-      <div class="flex items-center gap-4">
-        <span id="user-greeting" class="text-sm text-gray-600"></span>
-        <button id="logout-btn" class="text-sm text-indigo-600 hover:text-indigo-800">Logout</button>
-      </div>
-    </div>
-
-    <div class="flex items-start justify-between gap-6">
+<body>
+  <div class="wrap">
+    <header>
       <div>
-        <div class="flex items-center gap-3">
-          <h1 class="text-3xl font-semibold tracking-tight">OTT Compliance Events Pipeline</h1>
-          <span class="pill">Live Monitoring</span>
-          <span class="pill bg-green-100 text-green-800">Operational</span>
-          <a class="pill hover:bg-white" href="/docs">API Docs</a>
-        </div>
-        <p class="mt-2 text-sm text-gray-600">
-          Live view of ingestion, compliance risk distribution, and latest processed results.
-        </p>
+        <h1>OTT Compliance Events Pipeline</h1>
+        <div class="sub">Viewing and ad events checked against per-market privacy rules, plus behavioral risk signals.</div>
       </div>
+      <div class="actions">
+        <span id="updated"></span>
+        <a class="btn" href="/docs">API docs</a>
+        <button class="btn hidden" id="refresh">Refresh</button>
+        <button class="btn hidden" id="logout">Sign out</button>
+      </div>
+    </header>
 
-      <button id="refreshBtn"
-        class="rounded-xl px-4 py-2 bg-white/70 border border-black/10 hover:bg-white shadow-sm">
-        Refresh
-      </button>
+    <div id="login" class="card hidden">
+      <h2>Sign in</h2>
+      <div class="muted">The dashboard reads the same authenticated endpoints as the API. Local demo account: <span class="mono">admin / admin123</span>.</div>
+      <form id="login-form">
+        <label for="username">Username</label>
+        <input id="username" name="username" autocomplete="username" value="admin"/>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password"/>
+        <div class="err" id="login-err"></div>
+        <button class="btn primary" type="submit">Sign in</button>
+      </form>
     </div>
 
-    <!-- Summary cards -->
-    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
-      <div class="card p-5">
-        <div class="text-sm text-gray-600">Total Processed</div>
-        <div id="totalProcessed" class="mt-2 text-4xl font-semibold">-</div>
-        <div class="mt-3 text-xs text-gray-500">From /compliance/summary</div>
-      </div>
+    <main id="dash" class="hidden">
+      <section class="grid kpis">
+        <div class="card kpi"><div class="label">Events processed</div><div class="value" id="k-total">-</div><div class="hint" id="k-queue">-</div></div>
+        <div class="card kpi"><div class="label">High risk</div><div class="value" id="k-high" style="color:var(--high)">-</div><div class="hint" id="k-high-pct">-</div></div>
+        <div class="card kpi"><div class="label">Medium risk</div><div class="value" id="k-med" style="color:var(--med)">-</div><div class="hint" id="k-med-pct">-</div></div>
+        <div class="card kpi"><div class="label">Regulation violations</div><div class="value" id="k-reg">-</div><div class="hint" id="k-reg-hint">-</div></div>
+      </section>
 
-      <div class="card p-5">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-gray-600">Risk Distribution</div>
-          <span class="pill">low / medium / high</span>
-        </div>
-        <div class="mt-3 grid grid-cols-3 gap-3">
-          <div class="rounded-2xl bg-white/70 border border-black/10 p-3">
-            <div class="text-xs text-gray-500">LOW</div>
-            <div id="riskLow" class="text-2xl font-semibold">-</div>
-          </div>
-          <div class="rounded-2xl bg-white/70 border border-black/10 p-3">
-            <div class="text-xs text-gray-500">MED</div>
-            <div id="riskMed" class="text-2xl font-semibold">-</div>
-          </div>
-          <div class="rounded-2xl bg-white/70 border border-black/10 p-3">
-            <div class="text-xs text-gray-500">HIGH</div>
-            <div id="riskHigh" class="text-2xl font-semibold">-</div>
+      <section class="grid two">
+        <div class="card">
+          <h2>Risk distribution</h2>
+          <div class="donut-row">
+            <svg id="donut" width="160" height="160" viewBox="0 0 42 42" role="img" aria-label="Risk distribution"></svg>
+            <div class="legend" id="legend"></div>
           </div>
         </div>
-        <div class="mt-3 text-xs text-gray-500">From /compliance/summary</div>
-      </div>
-
-      <div class="card p-5">
-        <div class="text-sm text-gray-600">Health Check</div>
-        <div id="healthMsg" class="mt-2 text-lg font-medium">-</div>
-        <div class="mt-3 text-xs text-gray-500">From / (root)</div>
-      </div>
-    </div>
-
-    <!-- Risk Distribution Chart -->
-    <div class="mt-8 card p-6">
-      <h2 class="text-lg font-semibold">Risk Distribution Chart</h2>
-      <p class="text-sm text-gray-600">Visual representation of compliance risk levels</p>
-      <div class="mt-4">
-        <canvas id="riskChart" width="400" height="200"></canvas>
-      </div>
-    </div>
-
-    <!-- Latest results -->
-    <div class="mt-8 card p-6">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-semibold">Latest Results</h2>
-          <p class="text-sm text-gray-600">From /results/latest?limit=10</p>
+        <div class="card">
+          <h2>Violations by regulation</h2>
+          <div class="bars" id="reg-bars"></div>
         </div>
-        <span class="pill" id="lastUpdated">Last updated: -</span>
-      </div>
+      </section>
 
-      <div class="mt-5 overflow-auto">
-        <table class="w-full text-sm">
-          <thead class="text-left text-gray-600">
-            <tr class="border-b border-black/10">
-              <th class="py-2 pr-4">event_type</th>
-              <th class="py-2 pr-4">region</th>
-              <th class="py-2 pr-4">content_id</th>
-              <th class="py-2 pr-4">user_id</th>
-              <th class="py-2 pr-4">risk_level</th>
-              <th class="py-2 pr-4">flags</th>
-            </tr>
-          </thead>
-          <tbody id="resultsBody" class="align-top">
-            <tr><td class="py-3 text-gray-500" colspan="6">Loading...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
+      <section class="grid wide">
+        <div class="card">
+          <h2>Markets</h2>
+          <table>
+            <thead><tr><th>Region</th><th>Rule pack</th><th class="num">Events</th><th class="num">Flagged</th><th class="num">High</th></tr></thead>
+            <tbody id="regions"></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h2>Most frequent flags</h2>
+          <div class="bars" id="flag-bars"></div>
+        </div>
+      </section>
 
-    <div class="mt-6 text-xs text-gray-500">
-      Tip: keep this open, then send events via Swagger POST /events or curl.
-    </div>
+      <section class="grid">
+        <div class="card">
+          <h2>Latest processed events</h2>
+          <table>
+            <thead><tr><th>Event</th><th>Subscriber</th><th>Type</th><th>Region</th><th>Risk</th><th class="num">Score</th><th>Flags</th></tr></thead>
+            <tbody id="latest"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script>
-    const el = (id) => document.getElementById(id);
+    const $ = (id) => document.getElementById(id);
+    const COLORS = { low: "var(--low)", medium: "var(--med)", high: "var(--high)" };
+    let token = null;
+    try { token = sessionStorage.getItem("ottc_token"); } catch (e) { token = null; }
 
-    let riskChart;
-    let accessToken = localStorage.getItem('access_token');
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    function pct(n, d) { return d ? (100 * n / d).toFixed(1) + "%" : "0%"; }
 
-    function fmtTime() {
-      const d = new Date();
-      return d.toLocaleString();
+    function show(loggedIn) {
+      $("login").classList.toggle("hidden", loggedIn);
+      $("dash").classList.toggle("hidden", !loggedIn);
+      $("refresh").classList.toggle("hidden", !loggedIn);
+      $("logout").classList.toggle("hidden", !loggedIn);
     }
 
-    function riskBadge(level){
-      if(!level) return '<span class="pill">-</span>';
-      const base = 'inline-flex items-center px-2 py-1 rounded-full border text-xs';
-      if(level === 'high') return `<span class="${base}" style="background:rgba(239,68,68,.10);border-color:rgba(239,68,68,.25);color:#991b1b">HIGH</span>`;
-      if(level === 'medium') return `<span class="${base}" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.25);color:#92400e">MED</span>`;
-      return `<span class="${base}" style="background:rgba(34,197,94,.10);border-color:rgba(34,197,94,.25);color:#166534">LOW</span>`;
-    }
-
-    async function safeJson(url){
-      const headers = {};
-      if (accessToken) {
-        headers['Authorization'] = `Bearer ${accessToken}`;
-      }
-      const r = await fetch(url, { headers });
-      if(!r.ok) throw new Error(`${url} -> ${r.status}`);
+    async function api(path) {
+      const r = await fetch(path, { headers: { Authorization: "Bearer " + token } });
+      if (r.status === 401 || r.status === 403) { token = null; show(false); throw new Error("auth"); }
+      if (!r.ok) throw new Error(path + " -> " + r.status);
       return r.json();
     }
 
-    function showLogin() {
-      el('login-section').style.display = 'block';
-      el('user-info').style.display = 'none';
+    function donut(dist) {
+      const total = dist.low + dist.medium + dist.high;
+      const svg = $("donut");
+      let html = '<circle cx="21" cy="21" r="15.915" fill="none" stroke="#f1f5f9" stroke-width="6"></circle>';
+      let offset = 25;
+      for (const k of ["low", "medium", "high"]) {
+        const v = total ? (100 * dist[k] / total) : 0;
+        if (v > 0) {
+          html += `<circle cx="21" cy="21" r="15.915" fill="none" stroke="${COLORS[k]}" stroke-width="6"
+                    stroke-dasharray="${v} ${100 - v}" stroke-dashoffset="${offset}"></circle>`;
+        }
+        offset -= v;
+      }
+      html += `<text x="21" y="21" text-anchor="middle" dominant-baseline="central" font-size="6" font-weight="650" fill="#111827">${total}</text>`;
+      svg.innerHTML = html;
+      $("legend").innerHTML = ["low", "medium", "high"].map((k) =>
+        `<div><span class="dot" style="background:${COLORS[k]}"></span><span style="width:64px;text-transform:capitalize">${k}</span>
+         <strong style="font-variant-numeric:tabular-nums">${dist[k]}</strong><span class="muted">&nbsp;${pct(dist[k], total)}</span></div>`).join("");
     }
 
-    function showDashboard() {
-      el('login-section').style.display = 'none';
-      el('user-info').style.display = 'flex';
+    function bars(el, items, color) {
+      const max = Math.max(1, ...items.map((i) => i.count));
+      el.innerHTML = items.length ? items.map((i) => `
+        <div class="bar-row"><span class="name" title="${esc(i.name)}">${esc(i.name)}</span>
+          <div class="bar-track"><div class="bar" style="width:${(100 * i.count / max).toFixed(1)}%;background:${color}"></div></div>
+          <span class="num">${i.count}</span></div>`).join("") : '<div class="muted">No data yet.</div>';
     }
 
-    function checkAuth() {
-      // For portfolio demo, show dashboard with sample data without login
-      showDashboard();
-      el('user-greeting').textContent = 'Portfolio Demo - Sample Data';
-      refresh();
+    async function refresh() {
+      const d = await api("/api/v1/dashboard/overview?limit=10");
+      const dist = d.risk_distribution;
+      const total = d.total_processed;
+      const regTotal = Object.values(d.regulation_violations).reduce((a, b) => a + b, 0);
+      $("k-total").textContent = total;
+      $("k-queue").textContent = `${d.queue.queue_size} waiting in queue`;
+      $("k-high").textContent = dist.high;
+      $("k-high-pct").textContent = pct(dist.high, total) + " of processed";
+      $("k-med").textContent = dist.medium;
+      $("k-med-pct").textContent = pct(dist.medium, total) + " of processed";
+      $("k-reg").textContent = regTotal;
+      $("k-reg-hint").textContent = `across ${Object.keys(d.regulation_violations).length} regulations`;
+
+      donut(dist);
+      bars($("reg-bars"), Object.entries(d.regulation_violations).map(([name, count]) => ({ name, count })), "var(--accent)");
+      bars($("flag-bars"), d.top_flags.map((f) => ({ name: f.flag, count: f.count })), "#64748b");
+
+      $("regions").innerHTML = d.by_region.map((r) => `
+        <tr><td class="mono">${esc(r.region)}</td>
+          <td>${r.regulations.length ? r.regulations.map((x) => `<span class="tag reg">${esc(x)}</span>`).join("") : '<span class="muted">none configured</span>'}</td>
+          <td class="num">${r.events}</td><td class="num">${r.flagged} <span class="muted">(${pct(r.flagged, r.events)})</span></td>
+          <td class="num">${r.high}</td></tr>`).join("");
+
+      $("latest").innerHTML = d.latest.length ? d.latest.map((e) => `
+        <tr><td class="mono">${esc(e.event_id)}</td><td class="mono">${esc(e.user_id)}</td><td>${esc(e.event_type)}</td>
+          <td class="mono">${esc(e.region)}</td><td><span class="risk ${esc(e.risk_level)}">${esc(e.risk_level)}</span></td>
+          <td class="num">${Number(e.score).toFixed(1)}</td>
+          <td>${e.flags.length ? e.flags.map((f) => `<span class="tag">${esc(f)}</span>`).join("") : '<span class="muted">none</span>'}</td></tr>`).join("")
+        : '<tr><td colspan="7" class="muted">No processed events yet. POST to /events, then /process/drain.</td></tr>';
+
+      $("updated").textContent = "Updated " + new Date().toLocaleTimeString();
     }
 
-    // Login form handler
-    el('login-form').addEventListener('submit', async (e) => {
+    $("login-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const username = el('username').value;
-      const password = el('password').value;
-
-      try {
-        const response = await fetch('/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            username: username,
-            password: password,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          accessToken = data.access_token;
-          localStorage.setItem('access_token', accessToken);
-          el('login-message').textContent = '';
-          showDashboard();
-          el('user-greeting').textContent = `Welcome, ${username}!`;
-          refresh(); // Load data after login
-        } else {
-          el('login-message').textContent = 'Invalid username or password';
-        }
-      } catch (error) {
-        el('login-message').textContent = 'Login failed. Please try again.';
-      }
-    });
-
-    // Logout handler
-    el('logout-btn').addEventListener('click', () => {
-      localStorage.removeItem('access_token');
-      accessToken = null;
-      showLogin();
-      el('login-message').textContent = 'Logged out successfully';
-    });
-
-    function initChart() {
-      const ctx = el("riskChart").getContext('2d');
-      riskChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Low Risk', 'Medium Risk', 'High Risk'],
-          datasets: [{
-            data: [0, 0, 0],
-            backgroundColor: [
-              'rgba(34, 197, 94, 0.8)',
-              'rgba(245, 158, 11, 0.8)',
-              'rgba(239, 68, 68, 0.8)'
-            ],
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'bottom',
-            }
-          }
-        }
+      $("login-err").textContent = "";
+      const r = await fetch("/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ username: $("username").value, password: $("password").value }),
       });
-    }
+      if (!r.ok) { $("login-err").textContent = "Invalid username or password."; return; }
+      token = (await r.json()).access_token;
+      try { sessionStorage.setItem("ottc_token", token); } catch (e) { /* storage unavailable */ }
+      show(true);
+      refresh().catch(console.error);
+    });
+    $("logout").addEventListener("click", () => {
+      token = null;
+      try { sessionStorage.removeItem("ottc_token"); } catch (e) { /* storage unavailable */ }
+      show(false);
+    });
+    $("refresh").addEventListener("click", () => refresh().catch(console.error));
 
-    async function refresh(){
-      // For portfolio demo, use dynamic sample data that simulates real-time updates
-      el("resultsBody").innerHTML = `<tr><td class="py-3 text-gray-500" colspan="6">Loading real-time data...</td></tr>`;
-
-      // Simulate dynamic health message
-      const healthMessages = [
-        "OTT Compliance Events Pipeline - All Systems Operational",
-        "OTT Compliance Events Pipeline - Processing Events",
-        "OTT Compliance Events Pipeline - Risk Analysis Active",
-        "OTT Compliance Events Pipeline - Database Connected"
-      ];
-      el("healthMsg").textContent = healthMessages[Math.floor(Math.random() * healthMessages.length)];
-
-      // Simulate dynamic compliance summary with slight variations
-      const baseLow = 45 + Math.floor(Math.random() * 10) - 5;
-      const baseMed = 23 + Math.floor(Math.random() * 6) - 3;
-      const baseHigh = 12 + Math.floor(Math.random() * 4) - 2;
-      const total = baseLow + baseMed + baseHigh;
-
-      const summary = {
-        low: Math.max(0, baseLow),
-        medium: Math.max(0, baseMed),
-        high: Math.max(0, baseHigh),
-        total_processed: total + Math.floor(Math.random() * 20)
-      };
-
-      el("riskLow").textContent = summary.low;
-      el("riskMed").textContent = summary.medium;
-      el("riskHigh").textContent = summary.high;
-      el("totalProcessed").textContent = summary.total_processed;
-
-      // Update chart with dynamic data
-      if (riskChart) {
-        riskChart.data.datasets[0].data = [summary.low, summary.medium, summary.high];
-        riskChart.update();
-      }
-
-      // More comprehensive sample results with timestamps and varied data
-      const eventTypes = ['PLAY', 'PAUSE', 'SEEK', 'STOP', 'ERROR', 'LOGIN', 'LOGOUT'];
-      const regions = ['US', 'EU', 'UK', 'DE', 'CA', 'FR', 'JP', 'AU'];
-      const riskLevels = ['low', 'medium', 'high'];
-      const flags = [
-        ['normal_activity'],
-        ['eu_consent_missing', 'gdpr_check'],
-        ['high_frequency', 'multi_region'],
-        ['content_error', 'network_issue'],
-        ['premium_user', 'bulk_access'],
-        []
-      ];
-
-      const sampleResults = Array.from({length: 8}, (_, i) => {
-        const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-        const region = regions[Math.floor(Math.random() * regions.length)];
-        const riskLevel = riskLevels[Math.floor(Math.random() * riskLevels.length)];
-        const flagSet = flags[Math.floor(Math.random() * flags.length)];
-
-        return {
-          event: {
-            event_type: eventType,
-            region: region,
-            content_id: `content_${1000 + Math.floor(Math.random() * 9000)}`,
-            user_id: `user_${100 + Math.floor(Math.random() * 900)}`
-          },
-          result: {
-            risk_level: riskLevel,
-            flags: flagSet
-          }
-        };
-      });
-
-      el("resultsBody").innerHTML = sampleResults.map((x) => {
-        const ev = x.event;
-        const rs = x.result;
-        const reasons = Array.isArray(rs.flags) ? rs.flags.join(", ") : (rs.flags ?? "");
-        return `
-          <tr class="border-b border-black/5">
-            <td class="py-3 pr-4">${ev.event_type}</td>
-            <td class="py-3 pr-4">${ev.region}</td>
-            <td class="py-3 pr-4">${ev.content_id}</td>
-            <td class="py-3 pr-4">${ev.user_id}</td>
-            <td class="py-3 pr-4">${riskBadge(rs.risk_level)}</td>
-            <td class="py-3 pr-4 text-gray-600">${reasons}</td>
-          </tr>
-        `;
-      }).join("");
-
-      el("lastUpdated").textContent = `Last updated: ${fmtTime()}`;
-    }
-
-    // Initialize chart on load
-    initChart();
-
-    // Check authentication on load
-    checkAuth();
-
-    el("refreshBtn").addEventListener("click", refresh);
-    // Auto-refresh for demo
-    refresh();
-    setInterval(refresh, 8000); // Update every 8 seconds for realistic demo
+    show(Boolean(token));
+    if (token) refresh().catch(console.error);
+    setInterval(() => { if (token) refresh().catch(console.error); }, 10000);
   </script>
 </body>
 </html>
