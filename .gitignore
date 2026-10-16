@@ -205,3 +205,13 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Local runtime artifacts
+*.db
+*.db-journal
+models/
+daily_report.*
+weekly_report.*
+monthly_report.*
+*.mmdb
+.vscode/
