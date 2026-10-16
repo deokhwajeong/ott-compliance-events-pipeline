@@ -401,44 +401,56 @@ async def log_data_delete(
 
 
 @app.get("/api/v1/reports/daily")
-async def get_daily_report(current_user: User = Depends(get_current_active_user)):
+async def get_daily_report(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
+):
     """Daily compliance report"""
-    report = report_generator.generate_daily_report()
+    report = report_generator.generate_daily_report(db)
     return report.to_dict()
 
 
 @app.get("/api/v1/reports/daily/html")
-async def get_daily_report_html(current_user: User = Depends(get_current_active_user)):
+async def get_daily_report_html(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
+):
     """Daily compliance report (HTML)"""
-    report = report_generator.generate_daily_report()
+    report = report_generator.generate_daily_report(db)
     return HTMLResponse(content=report.to_html())
 
 
 @app.get("/api/v1/reports/weekly")
-async def get_weekly_report(current_user: User = Depends(get_current_active_user)):
+async def get_weekly_report(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
+):
     """Weekly compliance report"""
-    report = report_generator.generate_weekly_report()
+    report = report_generator.generate_weekly_report(db)
     return report.to_dict()
 
 
 @app.get("/api/v1/reports/weekly/html")
-async def get_weekly_report_html(current_user: User = Depends(get_current_active_user)):
+async def get_weekly_report_html(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
+):
     """Weekly compliance report (HTML)"""
-    report = report_generator.generate_weekly_report()
+    report = report_generator.generate_weekly_report(db)
     return HTMLResponse(content=report.to_html())
 
 
 @app.get("/api/v1/reports/monthly")
-async def get_monthly_report(current_user: User = Depends(get_current_active_user)):
+async def get_monthly_report(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
+):
     """Monthly compliance report"""
-    report = report_generator.generate_monthly_report()
+    report = report_generator.generate_monthly_report(db)
     return report.to_dict()
 
 
 @app.get("/api/v1/reports/monthly/html")
-async def get_monthly_report_html(current_user: User = Depends(get_current_active_user)):
+async def get_monthly_report_html(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)
+):
     """Monthly compliance report (HTML)"""
-    report = report_generator.generate_monthly_report()
+    report = report_generator.generate_monthly_report(db)
     return HTMLResponse(content=report.to_html())
 
 

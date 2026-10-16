@@ -111,8 +111,8 @@ Verified in this repository on Python 3.12 from a clean checkout, without Kafka,
 
 - The API starts, and the dashboard, `/docs` and `/metrics` respond.
 - `seed_demo.py` ingests 252 synthetic events and processes all of them; the dashboard shows the result (screenshot above).
-- `pytest`: 35 tests pass, covering the regulation rules, the rule pipeline, the anomaly detector's warm-up behavior, input validation and rate limiting, and the API end to end (auth, ingest, drain, summaries, dashboard data).
-- Line coverage of `src/` is 60% (`pytest --cov`). The lower-covered modules are the optional integrations (Redis cache, Kafka manager, scheduler, alert channels).
+- `pytest`: 36 tests pass, covering the regulation rules, the rule pipeline, the anomaly detector's warm-up behavior, input validation and rate limiting, and the API end to end (auth, ingest, drain, summaries, reports, dashboard data).
+- Line coverage of `src/` is 62% (`pytest --cov`). The lower-covered modules are the optional integrations (Redis cache, Kafka manager, scheduler, alert channels).
 - `ruff check` and `ruff format --check` are clean. GitHub Actions runs lint and tests on Python 3.11 and 3.12.
 - Alembic migrations (`alembic upgrade head`) create the schema.
 
