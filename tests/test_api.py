@@ -91,3 +91,95 @@ def test_daily_report_is_computed_from_stored_events(client, auth_headers, make_
     assert report["total_events"] >= 1
     html = client.get("/api/v1/reports/daily/html", headers=auth_headers)
     assert html.status_code == 200 and "GDPR Compliance Score" in html.text
+
+
+def _dsr(make_event, event_type, request_id, ts, region="DE", user="sub-dsr-1", **extra):
+    return make_event(
+        user_id=user,
+        event_type=event_type,
+        timestamp=ts,
+        region=region,
+        is_eu=region == "DE",
+        has_consent=False,
+        extra_metadata={"request_id": request_id, **extra},
+    )
+
+
+def test_dsr_event_without_request_id_is_rejected(client, make_event):
+    r = client.post("/events", json=make_event(event_type="dsr_deletion_request"))
+    assert r.status_code == 422
+
+
+def test_dsr_lifecycle_flags_late_gdpr_deletion(client, auth_headers, make_event):
+    events = [
+        # GDPR: received 31 Jan, one month ends 28 Feb, completed 1 Mar -> late.
+        _dsr(make_event, "dsr_deletion_request", "dsr-api-late", "2026-01-31T10:00:00Z"),
+        _dsr(make_event, "dsr_completed", "dsr-api-late", "2026-03-01T10:00:00Z"),
+        # CCPA: extension noticed on day 31, completed on day 70 -> on time.
+        _dsr(
+            make_event,
+            "dsr_access_request",
+            "dsr-api-ext",
+            "2026-01-01T10:00:00Z",
+            region="US",
+            user="sub-dsr-2",
+        ),
+        _dsr(
+            make_event, "dsr_extension", "dsr-api-ext", "2026-02-01T10:00:00Z", region="US", user="sub-dsr-2"
+        ),
+        _dsr(
+            make_event, "dsr_completed", "dsr-api-ext", "2026-03-12T10:00:00Z", region="US", user="sub-dsr-2"
+        ),
+        # Completion for a request that was never received.
+        _dsr(make_event, "dsr_completed", "dsr-api-ghost", "2026-03-01T10:00:00Z"),
+    ]
+    for ev in events:
+        assert client.post("/events", json=ev).status_code == 202, ev
+    results = {
+        r["event"]["event_id"]: r["result"]
+        for r in client.post("/process/drain", headers=auth_headers).json()
+    }
+    flags = [results[ev["event_id"]]["flags"] for ev in events]
+
+    assert "gdpr_data_deletion_violation" in flags[1] and "dsr_deadline_missed" in flags[1]
+    # Withdrawn consent on a rights request is not itself a consent violation.
+    assert "eu_privacy_violation" not in flags[0]
+    assert not any(f.endswith("_violation") for f in flags[4])
+    assert "dsr_unknown_request" in flags[5]
+
+    body = client.get("/api/v1/dsr?as_of=2026-04-01T00:00:00Z", headers=auth_headers).json()
+    by_id = {r["request_id"]: r for r in body["requests"]}
+    assert by_id["dsr-api-late"]["status"] == "breached"
+    assert by_id["dsr-api-late"]["due"] == "2026-02-28"
+    assert by_id["dsr-api-ext"]["status"] == "on_time" and by_id["dsr-api-ext"]["extended"]
+    assert "dsr-api-ghost" not in by_id
+    assert body["summary"]["by_regulation"]["GDPR"]["breached"] >= 1
+
+
+def test_dsr_open_request_becomes_overdue_with_time(client, auth_headers, make_event):
+    ev = _dsr(
+        make_event,
+        "dsr_access_request",
+        "dsr-api-open",
+        "2026-05-01T10:00:00Z",
+        region="BR",
+        user="sub-dsr-3",
+    )
+    assert client.post("/events", json=ev).status_code == 202
+    client.post("/process/drain", headers=auth_headers)
+
+    def status(as_of):
+        body = client.get(f"/api/v1/dsr?as_of={as_of}", headers=auth_headers).json()
+        return {r["request_id"]: r for r in body["requests"]}["dsr-api-open"]["status"]
+
+    assert status("2026-05-03T00:00:00Z") == "on_time"
+    assert status("2026-05-10T00:00:00Z") == "at_risk"  # LGPD access: 15 days, due 16 May
+    assert status("2026-05-17T00:00:00Z") == "breached"
+
+
+def test_dsr_deadline_table_endpoint(client):
+    body = client.get("/api/v1/dsr/deadlines").json()
+    rows = {(r["regulation"], r["request_type"]): r for r in body["deadlines"]}
+    assert rows[("CCPA", "deletion")]["period"] == 45
+    assert rows[("GDPR", "access")]["unit"] == "months"
+    assert "not legal advice" in body["disclaimer"]
